@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BrickSampler – a sampler for the TrimUI Brick | BrickWorld</title>
+<meta name="description" content="BrickSampler is an 80s/90s-style sampler for the TrimUI Brick running KNULLI. Kit and chromatic modes, loops, chop, time-stretch, LFO, FX, MIDI learn and 8 ms latency.">
+<!-- Test version: remove the next line when the site goes live -->
+<meta name="robots" content="noindex, nofollow">
+<meta property="og:title" content="BrickSampler">
+<meta property="og:description" content="An 80s/90s-style sampler for the TrimUI Brick.">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://brickworldhub.com/sampler.html">
+<meta property="og:url" content="https://brickworldhub.com/sampler.html">
+<meta property="og:image" content="https://brickworldhub.com/bricksampler-mockup.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#120800">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Doto:wght@800;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@type": "SoftwareApplication",
+ "name": "BrickSampler",
+ "softwareVersion": "1.4",
+ "description": "An 80s/90s-style sampler for the TrimUI Brick: kit and chromatic modes, loops, chop, time-stretch, LFO, FX, MIDI learn and 8 ms latency.",
+ "applicationCategory": "MultimediaApplication",
+ "operatingSystem": "KNULLI (TrimUI Brick)",
+ "url": "https://brickworldhub.com/sampler.html",
+ "image": "https://brickworldhub.com/bricksampler-mockup.jpg",
+ "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+ "isAccessibleForFree": true,
+ "offers": {
+  "@type": "Offer",
+  "price": "0",
+  "priceCurrency": "GBP"
+ },
+ "author": {
+  "@type": "Person",
+  "name": "Alessandro Pietrosanti",
+  "sameAs": [
+   "https://www.instagram.com/brickworld_hub/",
+   "https://ko-fi.com/brickworld"
+  ]
+ },
+ "isPartOf": {
+  "@type": "WebSite",
+  "name": "BrickWorld",
+  "url": "https://brickworldhub.com/"
+ }
+}
+</script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="index.html">BRICKWORLD</a>
+    <nav aria-label="Main">
+      <a href="sampler.html" aria-current="page">BrickSampler</a>
+      <a href="looper.html">BrickLooper</a>
+      <a href="fx.html">BrickFX</a>
+      <a href="index.html#about">About</a>
+    </nav>
+  </div>
+</header>
+<div class="subnav">
+  <div class="wrap">
+    <span class="name">BRICKSAMPLER</span>
+    <nav aria-label="On this page">
+      <a href="#features">Features</a>
+      <a href="#changes">Changes</a>
+      <a href="#install">Install</a>
+      <a href="#roadmap">2.0</a>
+    </nav>
+  </div>
+</div>
+
+<main>
+  <section id="top" class="wrap hero">
+    <div class="hero-copy">
+      <p class="kicker">A sampler for the TrimUI Brick · KNULLI · v1.4</p>
+      <h1>Sample it.<br>Play it.<br>Pocket it.</h1>
+      <p style="max-width:34em">An 80s/90s-style sampler that runs on a handheld. Record from the mic, loop and chop what you caught, map it across 16 pads or play it chromatically, then shape it with an LFO and the FX section. Plug in a MIDI keyboard and it answers in 8 ms.</p>
+      <div class="ctas">
+        <a class="btn primary" href="#install">Download v1.4</a>
+        <a class="btn" href="#features">What it does</a>
+      </div>
+      <p class="small">[DOWNLOAD LINK] · Free and open source (GPL-3.0)</p>
+    </div>
+    <div>
+      <img class="hero-img" src="bricksampler-mockup.jpg" width="1000" height="1250" alt="BrickSampler's Sample Edit screen glowing orange on a TrimUI Brick, on a dark surface">
+    </div>
+  </section>
+
+  <section id="features" class="band alt">
+    <div class="wrap section">
+      <h2>FEATURES</h2>
+      <div class="features">
+        <div class="feature"><h3>KIT MODE</h3><p>A different sample on each of the 16 pads, on MIDI notes 36–51 (General MIDI drum layout). Pads are one-shot and choke themselves when you hit them again.</p></div>
+        <div class="feature"><h3>CHROMATIC MODE</h3><p>One sample across the keyboard, 8 voices, sustain pedal and pitch bend. Attack, decay, sustain, release and velocity on every slot.</p></div>
+        <div class="feature"><h3>MIC RECORDING</h3><p>Sample straight from the Brick's microphone at 32, 44.1 or 48 kHz, 8, 16 or 24 bit. Every take gets a name before it's saved.</p></div>
+        <div class="feature"><h3>LOOPS</h3><p>Loop points set apart from start and end, so the attack plays once and the body repeats. A crossfade hides the join, a close-up shows the seam, Zero Snap finds a clean point.</p></div>
+        <div class="feature"><h3>CHOP</h3><p>Cut a break or a phrase into 4, 8 or 16 equal slices, or let it find the hits on its own. The slices land on the pads, ready to play.</p></div>
+        <div class="feature"><h3>TIME-STRETCH</h3><p>Make a sample 50% to 200% as long without changing its pitch. The result is saved as a new file, the original stays as it was.</p></div>
+        <div class="feature"><h3>LFO</h3><p>Sine, triangle, saw, square or sample-and-hold, on pitch, volume and filter cutoff. Delay to fade it in, mod wheel to ride the depth.</p></div>
+        <div class="feature"><h3>FX SECTION</h3><p>Drive, bitcrush, downsample, a resonant low/high/band-pass filter, stereo delay with ping-pong, and reverb. Each section switches off with one button and keeps its settings.</p></div>
+        <div class="feature"><h3>MIDI LEARN</h3><p>Any USB MIDI keyboard or controller. Point at an FX or LFO value, turn a knob, and that knob is now in charge. The map stays for every project.</p></div>
+        <div class="feature"><h3>8 MS LATENCY</h3><p>The audio engine runs in C on its own real-time thread, apart from the screen. Fast attacks on a piano feel immediate.</p></div>
+        <div class="feature"><h3>PROJECTS</h3><p>Save as many projects as you like, each with its own samples, settings, LFO and FX. Rename or delete samples from the browser.</p></div>
+        <div class="feature"><h3>DOT-MATRIX SCREEN</h3><p>Flat, single-colour LCD look with big text and big numbers. Orange, blue, red or green, like the displays of the period.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="changes" class="band">
+    <div class="wrap section">
+      <h2>CHANGES</h2>
+      <ul class="list">
+        <li><span class="ver">1.4</span><span class="txt">New EDIT page with loop points, crossfade and Zero Snap. Chop onto pads, time-stretch, the LFO page and MIDI learn.</span></li>
+        <li><span class="ver">1.2.3</span><span class="txt">Audio engine rewritten in C on its own thread. MIDI latency down to 8 ms, with a Low / Mid / Safe setting.</span></li>
+        <li><span class="ver">1.2</span><span class="txt">Named projects, sample rename and delete, a name for every take, on/off switch for each FX section, four display colours.</span></li>
+        <li><span class="ver">1.1</span><span class="txt">Settings page: recording sample rate and bit depth, engine status.</span></li>
+        <li><span class="ver">1.0</span><span class="txt">Kit and chromatic modes, FX, MIDI in, mic recording, the dot-matrix screen.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="band alt">
+    <div class="wrap why">
+      <h2>WHY I BUILT IT</h2>
+      <div>
+        <p>A sampler was the one instrument I never owned. So I made my own, for a device that fits in a pocket.</p>
+        <p>It takes the workflow I liked in 80s and 90s samplers, Akai especially, and keeps the useful parts. The old limits stay in the past: no 12-bit mode, no memory juggling.</p>
+        <p class="small">— Alessandro Pietrosanti</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="install" class="band">
+    <div class="wrap section">
+      <h2>INSTALL</h2>
+      <p>Runs on the TrimUI Brick with KNULLI. Nothing else to install: everything it needs is in the folder.</p>
+      <ol class="steps">
+        <li><span class="dot">01</span><span>Download the latest release. [LINK]</span></li>
+        <li><span class="dot">02</span><span>Copy the <b>bricksampler</b> folder and <b>BrickSampler.sh</b> to <b>roms/ports</b> on the SD card.</span></li>
+        <li><span class="dot">03</span><span>Launch BrickSampler from Ports in KNULLI. Your WAVs go in <b>bricksampler/samples</b>.</span></li>
+      </ol>
+      <p class="note lcd">Hold SELECT for the controls. MENU + START closes the app. Tested on KNULLI Scarab.</p>
+    </div>
+  </section>
+
+  <section id="roadmap" class="band alt">
+    <div class="wrap section" style="gap:40px">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <p class="kicker">Coming in 2.0</p>
+        <h2>WAVE SEQUENCING</h2>
+      </div>
+      <div class="ws">
+        <div class="ws-copy">
+          <p>I used to own a Korg Wavestation, and its wave sequences were the thing I missed most. In 2.0 they come to BrickSampler, built from your own samples.</p>
+          <p>Record a few sounds, line them up as steps, and one key plays them in turn: each step with its own length, level and tuning, sliding into the next with a crossfade or cutting straight to it. Loop part of the sequence, back and forth if you like, and move through it with velocity or the mod wheel.</p>
+          <p>It's a switch on the sample page. Leave it off and the slot plays a single sample, as now.</p>
+        </div>
+        <div class="ws-spec lcd">
+          <h3>PER STEP</h3>
+          <p>Sample · duration or gate · crossfade · level · coarse and fine tune</p>
+          <h3>PER SEQUENCE</h3>
+          <p>Start step · loop start and end · forward or back-and-forth · repeats or endless · tempo and time scale · key sync or free-running</p>
+          <h3>CONTROL</h3>
+          <p>Start step by velocity · mod wheel scans the sequence · LFO on step timing</p>
+        </div>
+      </div>
+      <ul class="list roadmap">
+        <li><span>Wave sequences built from your samples, switchable per slot and per pad</span><span class="tag">2.0</span></li>
+        <li><span>Knobs and faders on the main parameters, drawn light enough for the Brick</span><span class="tag">2.0</span></li>
+        <li><span>Vector mix of up to four sequences, moved by an envelope or two MIDI knobs</span><span class="tag">2.x</span></li>
+        <li><span>Recording and playback through a USB-C audio interface</span><span class="tag">Later</span></li>
+      </ul>
+    </div>
+  </section>
+  <section id="get-a-brick" class="band">
+    <div class="wrap why">
+      <h2>NO BRICK YET?</h2>
+      <div>
+        <p>BrickSampler runs on the TrimUI Brick, a small handheld console, with KNULLI on its SD card. The app is free: the Brick is the only thing you need to buy.</p>
+        <div class="ctas">
+          <!-- Put the referral link in href and remove the [REFERRAL LINK] text below -->
+          <a class="btn primary" href="#" rel="sponsored noopener" target="_blank">Buy a TrimUI Brick</a>
+        </div>
+        <p class="small">[REFERRAL LINK] · This is an affiliate link: if you buy through it, I get a small commission and you pay the same price. It helps me keep the apps free.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer band">
+  <div class="wrap">
+    <a class="logo dot" href="index.html">BRICKWORLD</a>
+    <span>Made by Alessandro Pietrosanti · <a href="mailto:info@brickworldhub.com">info@brickworldhub.com</a> · <a href="https://www.instagram.com/brickworld_hub/" rel="me noopener" target="_blank">Instagram</a> · <a href="https://ko-fi.com/brickworld" rel="noopener" target="_blank">Support on Ko-fi</a></span>
+    <p class="legal">Free and open source under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" rel="noopener" target="_blank">GPL-3.0</a> licence. TrimUI and Brick are trademarks of their owners. BrickWorld is not affiliated with TrimUI. <a href="privacy.html">Privacy</a> · <a href="#" data-cookie-settings>Cookie settings</a></p>
+  </div>
+</footer>
+
+<script src="consent.js"></script>
+</body>
+</html>
