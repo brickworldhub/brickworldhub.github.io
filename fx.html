@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BrickFX – a stereo effects unit for the TrimUI Brick | BrickWorld</title>
+<meta name="description" content="BrickFX turns the TrimUI Brick into a stereo effects unit. Any sound in over USB, from a synth or through a USB audio interface, and out of the jack. Four effects in a chain: drive, modulation, delay and reverb.">
+<!-- Test version: remove the next line when the site goes live -->
+<meta name="robots" content="noindex, nofollow">
+<meta property="og:title" content="BrickFX">
+<meta property="og:description" content="A stereo effects unit for the TrimUI Brick.">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://brickworldhub.com/fx.html">
+<meta property="og:url" content="https://brickworldhub.com/fx.html">
+<meta property="og:image" content="https://brickworldhub.com/brickfx-mockup.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#120800">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Doto:wght@800;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@type": "SoftwareApplication",
+ "name": "BrickFX",
+ "softwareVersion": "0.2",
+ "description": "A stereo effects unit for the TrimUI Brick: drive, modulation, delay and reverb in a chain.",
+ "applicationCategory": "MultimediaApplication",
+ "operatingSystem": "KNULLI (TrimUI Brick)",
+ "url": "https://brickworldhub.com/fx.html",
+ "image": "https://brickworldhub.com/brickfx-mockup.jpg",
+ "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+ "isAccessibleForFree": true,
+ "offers": {
+  "@type": "Offer",
+  "price": "0",
+  "priceCurrency": "GBP"
+ },
+ "author": {
+  "@type": "Person",
+  "name": "Alessandro Pietrosanti",
+  "sameAs": [
+   "https://www.instagram.com/brickworld_hub/",
+   "https://ko-fi.com/brickworld"
+  ]
+ },
+ "isPartOf": {
+  "@type": "WebSite",
+  "name": "BrickWorld",
+  "url": "https://brickworldhub.com/"
+ }
+}
+</script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="index.html">BRICKWORLD</a>
+    <nav aria-label="Main">
+      <a href="sampler.html">BrickSampler</a>
+      <a href="looper.html">BrickLooper</a>
+      <a href="fx.html" aria-current="page">BrickFX</a>
+      <a href="index.html#about">About</a>
+    </nav>
+  </div>
+</header>
+<div class="subnav">
+  <div class="wrap">
+    <span class="name">BRICKFX</span>
+    <nav aria-label="On this page">
+      <a href="#setup">Setup</a>
+      <a href="#chain">The chain</a>
+      <a href="#engine">Engine</a>
+      <a href="#roadmap">Next</a>
+    </nav>
+  </div>
+</div>
+
+<main>
+  <section id="top" class="wrap hero">
+    <div class="hero-copy">
+      <p class="kicker">A stereo effects unit for the TrimUI Brick · KNULLI · v0.2</p>
+      <h1>Plug in.<br>Play.<br>Echo out.</h1>
+      <p style="max-width:34em">BrickFX turns the Brick into a stereo effects box. Plug a USB synth or a USB audio interface into the Brick, and any sound can go through it: synths, drum machines, a guitar, a mic. It comes back out of the jack through four effects in a chain: drive, modulation, delay and reverb.</p>
+      <div class="ctas">
+        <a class="btn primary" href="#setup">How it works</a>
+        <a class="btn" href="#chain">The chain</a>
+      </div>
+      <p class="small">v0.2 runs on the Brick · In development · Same look and controls as BrickSampler</p>
+    </div>
+    <div>
+      <img class="hero-img" src="brickfx-mockup.jpg" width="1000" height="1250" alt="BrickFX delay page on the TrimUI Brick, with stereo meters and ping-pong echoes">
+    </div>
+  </section>
+
+  <section id="setup" class="band alt">
+    <div class="wrap section">
+      <h2>SETUP</h2>
+      <p>Two ways in, one way out. Use a USB synth on its own, or a USB audio interface for everything else.</p>
+      <ol class="steps">
+        <li><span class="dot">01</span><span>Connect your sound to the Brick's <b>USB</b> port. A synth with USB audio, like the FM-1, plugs in directly. For anything else, use a <b>USB audio interface</b>: whatever you can plug into it can go through BrickFX.</span></li>
+        <li><span class="dot">02</span><span>Run a cable from the Brick's <b>headphone jack</b> into your audio interface or mixer.</span></li>
+        <li><span class="dot">03</span><span>Open BrickFX, pick the input and the channels on the <b>I/O</b> page, and play.</span></li>
+      </ol>
+      <p class="note lcd">The FM-1 and an M-Audio interface both show up on the Brick as USB audio. Most class-compliant interfaces (the ones that need no driver) should work the same way.</p>
+      <p class="note lcd">Pages: I/O · CHAIN · DRV · MOD · DLY · REV · SET. If your synth sounds quiet over USB, turn up Input gain on the I/O page.</p>
+    </div>
+  </section>
+
+  <section id="chain" class="band">
+    <div class="wrap section">
+      <h2>THE CHAIN</h2>
+      <p style="max-width:40em">Four sections, one after the other: DRIVE, MOD, DELAY, REVERB. In each one you pick one type, or switch it off. Every section has its own page, with a picture of what it does: the echoes, the drive curve, the modulation wave, the size of the room.</p>
+      <div class="features">
+        <div class="feature"><h3>DRIVE</h3><p>Drive, fuzz or crush. From a warm push to broken and dirty.</p></div>
+        <div class="feature"><h3>MOD</h3><p>Chorus, phaser, tremolo, auto-pan or vibrato.</p></div>
+        <div class="feature"><h3>DELAY</h3><p>Digital, tape or analog. Stereo, ping-pong or mono, time in ms or locked to a note value, tap tempo, high and low cut in the repeats, width.</p></div>
+        <div class="feature"><h3>REVERB</h3><p>Room, plate or hall, in stereo.</p></div>
+        <div class="feature"><h3>PRESETS</h3><p>Ready-made sounds to start from, one button away.</p></div>
+        <div class="feature"><h3>MIDI</h3><p>MIDI learn for any value, MIDI clock for the delay, program change for the presets.</p></div>
+      </div>
+      <p class="note lcd">With all four sections on, BrickFX uses less than 10% of the Brick's CPU. There is room for more.</p>
+    </div>
+  </section>
+
+  <section id="engine" class="band alt">
+    <div class="wrap why">
+      <h2>UNDER THE HOOD</h2>
+      <div>
+        <p>The audio runs in C on its own real-time thread, like the engine in BrickSampler. It reads the USB input directly and writes straight to the jack, so the screen can never hold up the sound.</p>
+        <p>Your USB device and the Brick each have their own clock, and over a few minutes they slowly drift apart: the FM-1 runs about 0.2% faster than the Brick. A small adaptive resampler keeps them in step, so there are no clicks or drop-outs on long sessions.</p>
+        <p>The goal is 10 to 15 ms from input to output.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="roadmap" class="band">
+    <div class="wrap section">
+      <h2>NEXT UP</h2>
+      <ul class="list roadmap">
+        <li><span>Stereo delay, presets, MIDI learn and MIDI clock. Tested on the Brick</span><span class="tag">v0.1</span></li>
+        <li><span>The chain: drive, mod, delay and reverb, each with its own page</span><span class="tag">v0.2</span></li>
+        <li><span>3-band EQ, with the curve drawn on the screen</span><span class="tag">Next</span></li>
+        <li><span>Full-screen oscilloscope, with an XY view for stereo width</span><span class="tag">Next</span></li>
+        <li><span>Change the order of the sections</span><span class="tag">Later</span></li>
+        <li><span>More types: pitch shifter, reverse delay, shimmer reverb, and a texture section with filter, compressor and cassette</span><span class="tag">Later</span></li>
+        <li><span>Mod speed in time with MIDI clock</span><span class="tag">Later</span></li>
+      </ul>
+    </div>
+  </section>
+  <section id="get-a-brick" class="band alt">
+    <div class="wrap why">
+      <h2>NO BRICK YET?</h2>
+      <div>
+        <p>BrickFX runs on the TrimUI Brick, a small handheld console, with KNULLI on its SD card. The app is free: the Brick is the only thing you need to buy.</p>
+        <div class="ctas">
+          <!-- Put the referral link in href and remove the [REFERRAL LINK] text below -->
+          <a class="btn primary" href="#" rel="sponsored noopener" target="_blank">Buy a TrimUI Brick</a>
+        </div>
+        <p class="small">[REFERRAL LINK] · This is an affiliate link: if you buy through it, I get a small commission and you pay the same price. It helps me keep the apps free.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer band">
+  <div class="wrap">
+    <a class="logo dot" href="index.html">BRICKWORLD</a>
+    <span>Made by Alessandro Pietrosanti · <a href="mailto:info@brickworldhub.com">info@brickworldhub.com</a> · <a href="https://www.instagram.com/brickworld_hub/" rel="me noopener" target="_blank">Instagram</a> · <a href="https://ko-fi.com/brickworld" rel="noopener" target="_blank">Support on Ko-fi</a></span>
+    <p class="legal">Free and open source under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" rel="noopener" target="_blank">GPL-3.0</a> licence. TrimUI and Brick are trademarks of their owners. BrickWorld is not affiliated with TrimUI.</p>
+  </div>
+</footer>
+
+</body>
+</html>
