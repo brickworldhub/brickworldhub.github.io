@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BrickWorld – free music apps for the TrimUI Brick (coming soon)</title>
+<meta name="description" content="BrickWorld makes free, open source music apps for the TrimUI Brick running KNULLI: a sampler, a loop station and a stereo effects unit. The website is coming soon.">
+<link rel="canonical" href="https://brickworldhub.com/">
+<meta property="og:title" content="BrickWorld – coming soon">
+<meta property="og:description" content="Free music apps for the TrimUI Brick: BrickSampler, BrickLooper and BrickFX.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://brickworldhub.com/">
+<meta property="og:image" content="https://brickworldhub.com/bricksampler-loop.jpg">
+<meta name="theme-color" content="#120800">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Doto:wght@800;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#120800;--line:#3a1d06;--accent:#ff8a1f;--accent-hi:#ffb066;--text:#f0b27a;--muted:#c26e22}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:17px;line-height:1.6;display:flex;flex-direction:column}
+a{color:var(--accent)}a:hover{color:var(--accent-hi)}
+.wrap{width:100%;max-width:1120px;margin:0 auto;padding:0 24px}
+header .wrap{padding-top:24px;padding-bottom:24px;border-bottom:1px solid var(--line)}
+.logo{font-family:'Doto',monospace;font-weight:900;font-size:28px;letter-spacing:.04em;color:var(--accent)}
+main{flex:1;display:flex;align-items:center}
+.hero{display:flex;flex-wrap:wrap;gap:56px;align-items:center;padding-top:64px;padding-bottom:64px}
+.copy{flex:1 1 420px;min-width:0;display:flex;flex-direction:column;gap:22px}
+.media{flex:1 1 360px;min-width:0}
+.kicker{margin:0;font-size:14px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted)}
+h1{margin:0;font-family:'Doto',monospace;font-weight:900;font-size:clamp(48px,7vw,84px);line-height:1;color:var(--accent)}
+p{margin:0}
+.apps{margin:0;padding:0;list-style:none;border-top:1px solid var(--line)}
+.apps li{display:flex;flex-wrap:wrap;gap:4px 20px;padding:12px 0;border-bottom:1px solid var(--line)}
+.apps b{font-family:'Doto',monospace;font-weight:900;font-size:22px;color:var(--accent);flex:0 0 180px}
+.apps span{flex:1 1 240px;min-width:0}
+.btn{border:1px solid var(--accent);display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 28px;background:var(--accent);color:var(--bg);font-weight:600;text-decoration:none;text-transform:uppercase;letter-spacing:.08em;border-radius:2px;align-self:flex-start}
+.btn:hover{background:var(--accent-hi);color:var(--bg)}
+.ctas{display:flex;flex-wrap:wrap;gap:16px}
+.btn.ghost{background:none;color:var(--accent);border:1px solid var(--accent)}
+.btn.ghost:hover{color:var(--accent-hi);border-color:var(--accent-hi);background:none}
+video{display:block;width:100%;max-width:440px;height:auto;margin:0 auto;border-radius:4px}
+footer .wrap{padding-top:24px;padding-bottom:24px;border-top:1px solid var(--line);font-size:14px;color:var(--muted);display:flex;flex-wrap:wrap;gap:8px 24px;justify-content:space-between}
+@media (max-width:600px){
+  body{font-size:16px}
+  .wrap{padding:0 20px}
+  .hero{padding-top:40px;padding-bottom:48px;gap:40px}
+  h1{font-size:44px}
+  .btn{flex:1 1 100%}
+  .apps b{flex-basis:100%}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap"><span class="logo">BRICKWORLD</span></div>
+</header>
+
+<main>
+  <div class="wrap hero">
+    <div class="copy">
+      <p class="kicker">Free music apps for the TrimUI Brick · KNULLI</p>
+      <h1>Coming<br>soon.</h1>
+      <p>I'm making a small set of free, open source apps that turn the TrimUI Brick into music gear. The website is almost ready.</p>
+      <ul class="apps">
+        <li><b>BRICKSAMPLER</b><span>An 80s/90s-style sampler, played from pads or a MIDI keyboard.</span></li>
+        <li><b>BRICKLOOPER</b><span>A five-track loop station, always in time.</span></li>
+        <li><b>BRICKFX</b><span>A stereo effects unit for any sound you plug in.</span></li>
+      </ul>
+      <p>Questions, or want to know when it's out? Send me an email or follow @brickworld_hub on Instagram.</p>
+      <div class="ctas">
+        <a class="btn" href="mailto:info@brickworldhub.com">info@brickworldhub.com</a>
+        <a class="btn ghost" href="https://www.instagram.com/brickworld_hub/" rel="me noopener" target="_blank">Instagram</a>
+      </div>
+    </div>
+    <div class="media">
+      <video src="bricksampler-loop.mp4" poster="bricksampler-loop.jpg" width="1080" height="1350" autoplay muted loop playsinline preload="auto" aria-label="BrickSampler running on a TrimUI Brick: pads lighting up in time and the playhead running across a vocal sample"></video>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Made by Alessandro Pietrosanti · <a href="https://ko-fi.com/brickworld" rel="noopener" target="_blank">Support on Ko-fi</a></span>
+    <span>Free and open source (GPL-3.0) · Not affiliated with TrimUI</span>
+  </div>
+</footer>
+
+<script>
+if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  document.querySelectorAll('video[autoplay]').forEach(function (v) { v.removeAttribute('autoplay'); v.pause(); });
+}
+</script>
+</body>
+</html>
