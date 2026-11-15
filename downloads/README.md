@@ -5,5 +5,6 @@ Free apps for the TrimUI Brick (KNULLI). Each zip is ready to copy to `roms/port
 | App | Version | File |
 |---|---|---|
 | BrickTape – 4-track tape recorder | 1.0.0 | [bricktape/BrickTape_v1.0.0.zip](bricktape/BrickTape_v1.0.0.zip) |
+| BrickLooper – 5-track loop station | 1.5.0 | [bricklooper/BrickLooper_v1.5.0.zip](bricklooper/BrickLooper_v1.5.0.zip) |
 
 Source code, easy to read online: [`src/`](../src/).
