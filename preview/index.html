@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BrickWorld – music apps for the TrimUI Brick</title>
-<meta name="description" content="BrickWorld makes free, open source music apps for the TrimUI Brick running KNULLI: BrickSampler, an 80s/90s-style sampler, BrickLooper, a five-track loop station, and BrickFX, a stereo effects unit. By Alessandro Pietrosanti.">
+<meta name="description" content="BrickWorld makes free, open source music apps for the TrimUI Brick running KNULLI: BrickSampler, an 80s/90s-style sampler, BrickLooper, a five-track loop station, BrickTape, a four-track recorder, and two stereo effects units, BrickFX and BrickAmbientFX. By Alessandro Pietrosanti.">
 <!-- Test version: remove the next line when the site goes live -->
 <meta name="robots" content="noindex, nofollow">
 <meta property="og:title" content="BrickWorld">
-<meta property="og:description" content="Free music apps for the TrimUI Brick: BrickSampler, BrickLooper and BrickFX.">
+<meta property="og:description" content="Free music apps for the TrimUI Brick: BrickSampler, BrickLooper, BrickTape, BrickFX and BrickAmbientFX.">
 <meta property="og:type" content="website">
 <link rel="canonical" href="https://brickworldhub.com/">
 <meta property="og:url" content="https://brickworldhub.com/">
@@ -44,23 +44,13 @@
   {
    "@type": "ItemList",
    "itemListElement": [
-    {
-     "@type": "ListItem",
-     "position": 1,
-     "url": "https://brickworldhub.com/sampler.html"
-    },
-    {
-     "@type": "ListItem",
-     "position": 2,
-     "url": "https://brickworldhub.com/looper.html"
-    },
-    {
-     "@type": "ListItem",
-     "position": 3,
-     "url": "https://brickworldhub.com/fx.html"
-    }
-   ]
-  }
+     {"@type": "ListItem", "position": 1, "url": "https://brickworldhub.com/sampler.html"},
+     {"@type": "ListItem", "position": 2, "url": "https://brickworldhub.com/looper.html"},
+     {"@type": "ListItem", "position": 3, "url": "https://brickworldhub.com/tape.html"},
+     {"@type": "ListItem", "position": 4, "url": "https://brickworldhub.com/fx.html"},
+     {"@type": "ListItem", "position": 5, "url": "https://brickworldhub.com/ambientfx.html"}
+    ]
+   }
  ]
 }
 </script>
@@ -73,8 +63,10 @@
     <nav aria-label="Main">
       <a href="sampler.html">BrickSampler</a>
       <a href="looper.html">BrickLooper</a>
+      <a href="tape.html">BrickTape</a>
       <a href="fx.html">BrickFX</a>
-      <a href="#about">About</a>
+      <a href="ambientfx.html">AmbientFX</a>
+      <a href="index.html#about">About</a>
     </nav>
   </div>
 </header>
@@ -84,7 +76,7 @@
     <div class="hero-copy">
       <p class="kicker">Free music apps for the TrimUI Brick · KNULLI</p>
       <h1>Music gear<br>in your<br>pocket.</h1>
-      <p style="max-width:34em">BrickWorld is a small set of apps that turn the TrimUI Brick into music hardware. A sampler you play from pads or a MIDI keyboard, a loop station to stack up your ideas, and a stereo effects unit for any sound you put into it. Same dot-matrix screen, same buttons, same way of working.</p>
+      <p style="max-width:34em">BrickWorld is a small set of apps that turn the TrimUI Brick into music hardware. A sampler you play from pads or a MIDI keyboard, a loop station to stack up your ideas, a four-track tape recorder, and two stereo effects units for any sound you put into them. Same dot-matrix screen, same buttons, same way of working.</p>
       <p style="max-width:34em">All of them are free and open source. No paid version, no ads, no sign-up. I make them for fun and for my own setup, and I'm happy to share them.</p>
       <div class="ctas">
         <a class="btn primary" href="#apps">See the apps</a>
@@ -117,11 +109,27 @@
           </div>
         </article>
         <article class="product">
+          <img src="bricktape-mockup.jpg" width="1000" height="1250" alt="BrickTape's TAPE page on the TrimUI Brick, with a cassette and four tracks" loading="lazy">
+          <div class="product-body">
+            <div class="product-top"><h3>BRICKTAPE</h3><span class="status">v0.1 · Beta · Free</span></div>
+            <p>A four-track recorder, like an old cassette four-track. Ten minutes of tape, punch in and out, rewind with sound, and reels that turn while it plays.</p>
+            <a class="btn primary" href="tape.html">See BrickTape</a>
+          </div>
+        </article>
+        <article class="product">
           <img src="brickfx-mockup.jpg" width="1000" height="1250" alt="BrickFX delay page on the TrimUI Brick, with stereo meters and ping-pong echoes" loading="lazy">
           <div class="product-body">
             <div class="product-top"><h3>BRICKFX</h3><span class="status">v0.2 · Free · In development</span></div>
             <p>A stereo effects unit. Plug in a USB synth, or any sound through a USB audio interface, and it comes out of the jack with effects on it. Four effects in a chain: drive, modulation, delay and reverb.</p>
             <a class="btn primary" href="fx.html">See BrickFX</a>
+          </div>
+        </article>
+        <article class="product">
+          <img src="brickambientfx-mockup.jpg" width="1000" height="1250" alt="BrickAmbientFX on the TrimUI Brick, with the effect chain and a long reverb tail" loading="lazy">
+          <div class="product-body">
+            <div class="product-top"><h3>AMBIENTFX</h3><span class="status">v0.1 · Free · In development</span></div>
+            <p>BrickAmbientFX, Sarta Edition: effects made for ambient music. Swell, amp and cabinets, glitch, delays up to 4 seconds, huge reverbs and a freeze button.</p>
+            <a class="btn primary" href="ambientfx.html">See BrickAmbientFX</a>
           </div>
         </article>
       </div>
