@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BrickAmbientFX (Sarta Edition) – ambient effects for the TrimUI Brick | BrickWorld</title>
+<meta name="description" content="BrickAmbientFX (Sarta Edition) is a free stereo effects unit for ambient music on the TrimUI Brick: compressor and swell, amp and cabinets, glitch, delays up to 4 s, cloud, shimmer and bloom reverbs, freeze, split routing.">
+<!-- Test version: remove the next line when the site goes live -->
+<meta name="robots" content="noindex, nofollow">
+<meta property="og:title" content="BrickAmbientFX – Sarta Edition">
+<meta property="og:description" content="An ambient effects unit for the TrimUI Brick.">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://brickworldhub.com/ambientfx.html">
+<meta property="og:url" content="https://brickworldhub.com/ambientfx.html">
+<meta property="og:image" content="https://brickworldhub.com/brickambientfx-mockup.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#120800">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Doto:wght@800;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@type": "SoftwareApplication",
+ "name": "BrickAmbientFX (Sarta Edition)",
+ "softwareVersion": "0.1",
+ "description": "A stereo effects unit for ambient music on the TrimUI Brick: compressor, amp and cabinet, modulation, delay and reverb, with freeze and split routing.",
+ "applicationCategory": "MultimediaApplication",
+ "operatingSystem": "KNULLI (TrimUI Brick)",
+ "url": "https://brickworldhub.com/ambientfx.html",
+ "image": "https://brickworldhub.com/brickambientfx-mockup.jpg",
+ "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+ "isAccessibleForFree": true,
+ "offers": {
+  "@type": "Offer",
+  "price": "0",
+  "priceCurrency": "GBP"
+ },
+ "author": {
+  "@type": "Person",
+  "name": "Alessandro Pietrosanti",
+  "sameAs": [
+   "https://www.instagram.com/brickworld_hub/",
+   "https://ko-fi.com/brickworld"
+  ]
+ },
+ "isPartOf": {
+  "@type": "WebSite",
+  "name": "BrickWorld",
+  "url": "https://brickworldhub.com/"
+ }
+}
+</script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="index.html">BRICKWORLD</a>
+    <nav aria-label="Main">
+      <a href="sampler.html">BrickSampler</a>
+      <a href="looper.html">BrickLooper</a>
+      <a href="tape.html">BrickTape</a>
+      <a href="fx.html">BrickFX</a>
+      <a href="ambientfx.html" aria-current="page">AmbientFX</a>
+      <a href="index.html#about">About</a>
+    </nav>
+  </div>
+</header>
+<div class="subnav">
+  <div class="wrap">
+    <span class="name">AMBIENTFX</span>
+    <nav aria-label="On this page">
+      <a href="#setup">Setup</a>
+      <a href="#chain">The chain</a>
+      <a href="#roadmap">Next</a>
+    </nav>
+  </div>
+</div>
+
+<main>
+  <section id="top" class="wrap hero">
+    <div class="hero-copy">
+      <p class="kicker">An ambient effects unit for the TrimUI Brick · KNULLI · v0.1 · Sarta Edition</p>
+      <h1>Big rooms.<br>Long tails.<br>Slow swells.</h1>
+      <p style="max-width:34em">BrickAmbientFX is a stereo effects unit made for ambient music. It started from BrickFX, with the reverbs, delays and modulation pushed much further, plus a compressor, an amp with cabinets and a freeze button. Plug a USB synth or a USB audio interface into the Brick and play.</p>
+      <div class="ctas">
+        <a class="btn primary" href="#chain">The chain</a>
+        <a class="btn" href="#setup">How it works</a>
+      </div>
+      <p class="small">v0.1 runs on the Brick · In development · Same look and controls as the other BrickWorld apps</p>
+    </div>
+    <div>
+      <img class="hero-img" src="brickambientfx-mockup.jpg" width="1000" height="1250" alt="BrickAmbientFX on a TrimUI Brick: the effect chain with delay and reverb side by side, and a long reverb tail">
+    </div>
+  </section>
+
+  <section id="setup" class="band alt">
+    <div class="wrap section">
+      <h2>SETUP</h2>
+      <p>The same setup as BrickFX: one cable in, one cable out.</p>
+      <ol class="steps">
+        <li><span class="dot">01</span><span>Connect a USB synth, like the FM-1, or a <b>USB audio interface</b> to the Brick's <b>USB</b> port. Anything you can plug into the interface can go through it.</span></li>
+        <li><span class="dot">02</span><span>Run a cable from the Brick's <b>headphone jack</b> into your audio interface, mixer or amp.</span></li>
+        <li><span class="dot">03</span><span>Open BrickAmbientFX. The input shows as <b>USB</b>, whatever device you use. Pick a preset and play.</span></li>
+      </ol>
+      <p class="note lcd">Pages: I/O · FX · CMP · AMP · MOD · DLY · REV · SET</p>
+    </div>
+  </section>
+
+  <section id="chain" class="band">
+    <div class="wrap section">
+      <h2>THE CHAIN</h2>
+      <p style="max-width:40em">COMP, AMP and cabinet, MOD, DELAY, REVERB. Run them one after the other, or use Split: delay and reverb side by side, with the delay on the left and the reverb on the right if you like. The stereo width goes up to 200%.</p>
+      <div class="features">
+        <div class="feature"><h3>COMP</h3><p>Studio, opto or limiter. Or Swell, for slow volume swells with no attack, like a bow on a string.</p></div>
+        <div class="feature"><h3>AMP + CAB</h3><p>Clean, crunch, lead, fuzz or lo-fi, with bass, middle and treble, and five cabinets from 1x12 to an old radio.</p></div>
+        <div class="feature"><h3>MOD</h3><p>Chorus, ensemble, flanger, phaser, tremolo, auto-pan and vibrato. And Glitch: slices that repeat, play backwards, jump an octave or stop like a tape.</p></div>
+        <div class="feature"><h3>DELAY</h3><p>Up to 4 seconds. Digital, tape, analog, dual, reverse and shimmer, with an octave up in the repeats.</p></div>
+        <div class="feature"><h3>REVERB</h3><p>Room, plate and hall, plus three for ambient: Cloud (huge), Shimmer (an octave up inside the reverb) and Bloom (it grows slowly).</p></div>
+        <div class="feature"><h3>FREEZE</h3><p>One tap on SELECT holds the delay and the reverb, so you can play on top of a sound that never ends.</p></div>
+        <div class="feature"><h3>NO CLICKS</h3><p>Change effect types, switch sections or routing while you play. Turn the delay or reverb off and the tail rings out.</p></div>
+        <div class="feature"><h3>16 PRESETS</h3><p>Ready-made sounds to start from, also from program change on your MIDI keyboard.</p></div>
+      </div>
+      <p class="note lcd">Same C audio engine as BrickFX. With the whole chain on it uses about 10% of the Brick's CPU.</p>
+    </div>
+  </section>
+
+  <section id="roadmap" class="band alt">
+    <div class="wrap section">
+      <h2>NEXT UP</h2>
+      <ul class="list roadmap">
+        <li><span>The chain, Split routing, freeze, 16 presets, switching without clicks. Tested on the Brick</span><span class="tag">v0.1</span></li>
+        <li><span>EQ and a full-screen oscilloscope, like in BrickFX</span><span class="tag">Next</span></li>
+        <li><span>Change the order of the sections, and a second Split mode (left input to one path, right input to the other)</span><span class="tag">Later</span></li>
+        <li><span>A looper to capture what you play</span><span class="tag">Idea</span></li>
+        <li><span>Choose the shimmer interval: fifth, octave or more</span><span class="tag">Idea</span></li>
+      </ul>
+    </div>
+  </section>
+  <section id="get-a-brick" class="band alt">
+    <div class="wrap why">
+      <h2>NO BRICK YET?</h2>
+      <div>
+        <p>BrickAmbientFX runs on the TrimUI Brick, a small handheld console, with KNULLI on its SD card. The app is free: the Brick is the only thing you need to buy.</p>
+        <div class="ctas">
+          <!-- Put the referral link in href and remove the [REFERRAL LINK] text below -->
+          <a class="btn primary" href="#" rel="sponsored noopener" target="_blank">Buy a TrimUI Brick</a>
+        </div>
+        <p class="small">[REFERRAL LINK] · This is an affiliate link: if you buy through it, I get a small commission and you pay the same price. It helps me keep the apps free.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer band">
+  <div class="wrap">
+    <a class="logo dot" href="index.html">BRICKWORLD</a>
+    <span>Made by Alessandro Pietrosanti · <a href="mailto:info@brickworldhub.com">info@brickworldhub.com</a> · <a href="https://www.instagram.com/brickworld_hub/" rel="me noopener" target="_blank">Instagram</a> · <a href="https://ko-fi.com/brickworld" rel="noopener" target="_blank">Support on Ko-fi</a></span>
+    <p class="legal">Free and open source under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" rel="noopener" target="_blank">GPL-3.0</a> licence. TrimUI and Brick are trademarks of their owners. BrickWorld is not affiliated with TrimUI. <a href="privacy.html">Privacy</a> · <a href="#" data-cookie-settings>Cookie settings</a></p>
+  </div>
+</footer>
+
+<script src="consent.js"></script>
+</body>
+</html>
