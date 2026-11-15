@@ -1,0 +1,17 @@
+BrickSampler 2.0.0 - sampler for the TrimUI Brick (KNULLI)
+
+1. Copy everything in this folder (BrickSampler.sh, the .keys files and the
+   bricksampler folder) to roms/ports on the SD card.
+2. Start BrickSampler from Ports. The first start unpacks NumPy (a few seconds).
+3. Put your WAV files in bricksampler/samples.
+4. Play it from a USB MIDI keyboard. To record from a USB audio device
+   (audio interface, USB mic, synth with USB audio), plug it in and pick
+   USB as the source on the REC page.
+
+If you update from an older version, keep your bricksampler/samples,
+bricksampler/projects and bricksampler/settings.json folders and files.
+
+Hold SELECT for the controls. MENU + START closes the app.
+If something goes wrong, bricksampler/log.txt says why.
+
+Free software, GPL-3.0 (see bricksampler/LICENSE). https://brickworldhub.com
