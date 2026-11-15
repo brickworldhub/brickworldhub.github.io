@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BrickLooper – a loop station for the TrimUI Brick | BrickWorld</title>
-<meta name="description" content="BrickLooper is a five-track stereo loop station for the TrimUI Brick running KNULLI. Record from a USB audio interface, a USB synth or the built-in sampler. Overdub, undo, always in time. Includes all of BrickSampler.">
+<meta name="description" content="BrickLooper is a free five-track stereo loop station for the TrimUI Brick running KNULLI. Record from a USB audio device or the built-in mic, overdub or replace, undo, metronome with count-in, FX on the output.">
 <!-- Test version: remove the next line when the site goes live -->
 <meta name="robots" content="noindex, nofollow">
 <meta property="og:title" content="BrickLooper">
@@ -27,12 +27,13 @@
  "@context": "https://schema.org",
  "@type": "SoftwareApplication",
  "name": "BrickLooper",
- "softwareVersion": "1.0",
- "description": "A five-track stereo loop station for the TrimUI Brick, with all of BrickSampler inside.",
+ "softwareVersion": "1.5.0",
+ "description": "A five-track stereo loop station for the TrimUI Brick: USB or mic input, overdub and replace, undo, metronome with count-in, FX.",
  "applicationCategory": "MultimediaApplication",
  "operatingSystem": "KNULLI (TrimUI Brick)",
  "url": "https://brickworldhub.com/looper.html",
  "image": "https://brickworldhub.com/bricklooper-loop.jpg",
+ "downloadUrl": "https://brickworldhub.com/downloads/bricklooper/BrickLooper_v1.5.0.zip",
  "license": "https://www.gnu.org/licenses/gpl-3.0.html",
  "isAccessibleForFree": true,
  "offers": {
@@ -77,7 +78,7 @@
     <nav aria-label="On this page">
       <a href="#features">Features</a>
       <a href="#controls">Controls</a>
-      <a href="#install">Install</a>
+      <a href="#install">Download</a>
       <a href="#roadmap">Next</a>
     </nav>
   </div>
@@ -86,14 +87,14 @@
 <main>
   <section id="top" class="wrap hero">
     <div class="hero-copy">
-      <p class="kicker">A loop station for the TrimUI Brick · KNULLI · v1.0</p>
+      <p class="kicker">A loop station for the TrimUI Brick · KNULLI · v1.5</p>
       <h1>Play it.<br>Loop it.<br>Stack it.</h1>
-      <p style="max-width:34em">BrickLooper is a five-track loop station for the Brick. Record loops from a USB audio interface or a USB synth, from the pads and notes of the built-in sampler, or from both at once. Every track stays in time with the first one.</p>
+      <p style="max-width:34em">BrickLooper is a five-track loop station for the Brick, made for playing live. Plug in a USB audio interface, a USB mic or a synth with USB audio, or use the built-in mic. Record a loop, stack more on top, and every track stays in time with the first one.</p>
       <div class="ctas">
-        <a class="btn primary" href="#features">What it does</a>
-        <a class="btn" href="#controls">Controls</a>
+        <a class="btn primary" href="/downloads/bricklooper/BrickLooper_v1.5.0.zip" download>Download v1.5.0</a>
+        <a class="btn" href="#features">What it does</a>
       </div>
-      <p class="small">v1.0 · Built on BrickSampler, with all of it inside · USB input still being tested on the Brick</p>
+      <p class="small">Free and open source (GPL-3.0) · <a href="https://github.com/brickworldhub/brickworldhub.github.io/tree/main/src/bricklooper" rel="noopener" target="_blank">Source code on GitHub</a></p>
     </div>
     <div>
       <video class="hero-img" src="bricklooper-loop.mp4" poster="bricklooper-loop.jpg" width="1080" height="1350" autoplay muted loop playsinline preload="auto" aria-label="BrickLooper running on a TrimUI Brick: five tracks looping, the playhead moving across the waveforms"></video>
@@ -104,15 +105,16 @@
     <div class="wrap section">
       <h2>FEATURES</h2>
       <div class="features">
-        <div class="feature"><h3>FIVE STEREO TRACKS</h3><p>Record, overdub, stop and play each track on its own, with its own volume.</p></div>
+        <div class="feature"><h3>FIVE STEREO TRACKS</h3><p>Record, overdub, stop and play each track on its own, with its own volume and level meter. Up to 60 seconds per track.</p></div>
         <div class="feature"><h3>ALWAYS IN TIME</h3><p>The first take sets the loop length. Every other track snaps to it and becomes 1, 2 or 3 loops long.</p></div>
         <div class="feature"><h3>EASY ON TIMING</h3><p>Close a take a little early and it keeps recording to the end of the loop. Close it a little late and the extra bit goes on top of the start.</p></div>
-        <div class="feature"><h3>RECORD FROM ANYWHERE</h3><p>The USB input, the sampler's pads and notes (after the FX), or both together. You can hear the input while you play.</p></div>
+        <div class="feature"><h3>USB OR MIC</h3><p>A USB audio interface, a USB mic or a synth with USB audio, from channel 1, 2 or both. Or the built-in mic, good for quick ideas: while it records the sound stops, but the loop keeps time.</p></div>
+        <div class="feature"><h3>METRONOME</h3><p>Click on or off, 40 to 240 BPM, in 2/4, 3/4, 4/4, 5/4, 6/8 or 7/8. With the click on, the first loop is a whole number of bars. The click is never recorded.</p></div>
+        <div class="feature"><h3>COUNT-IN</h3><p>Press A, count along with one bar of click, and play on the next beat 1.</p></div>
+        <div class="feature"><h3>ADD OR REPLACE</h3><p>Overdub adds a layer. Replace records over the old part where you play, and undo brings the old part back.</p></div>
         <div class="feature"><h3>UNDO AND REDO</h3><p>Took a wrong overdub? Take it back, or put it back again.</p></div>
-        <div class="feature"><h3>BACK TO THE TOP</h3><p>When everything is stopped and you press play, all loops start again from the beginning.</p></div>
+        <div class="feature"><h3>FX ON THE OUTPUT</h3><p>Drive, bitcrush, filter, delay and reverb on everything you hear. Your takes are recorded clean. No clicks when you switch an effect on or off.</p></div>
         <div class="feature"><h3>SAVED WITH THE PROJECT</h3><p>START saves your loops with the project. When you open it again they are there, stopped and ready. B starts them.</p></div>
-        <div class="feature"><h3>THE WHOLE SAMPLER</h3><p>Everything from BrickSampler is inside: kit and chromatic modes, loops and chop, LFO, FX, MIDI and the REC page.</p></div>
-        <div class="feature"><h3>LATENCY OFFSET</h3><p>The delay of the output and the USB input is taken out for you. If a take still sounds a bit early or late, move Offset to fix it.</p></div>
       </div>
     </div>
   </section>
@@ -124,9 +126,9 @@
       <ul class="list keys">
         <li><span class="ver">A</span><span class="txt">Record, then overdub, then play, on the track you picked</span></li>
         <li><span class="ver">X</span><span class="txt">Stop or start the track</span></li>
-        <li><span class="ver">B</span><span class="txt">Stop or start all tracks</span></li>
+        <li><span class="ver">B</span><span class="txt">Start or stop all tracks</span></li>
         <li><span class="ver">Y+A</span><span class="txt">Undo / redo</span></li>
-        <li><span class="ver">Y+X</span><span class="txt">Clear the track</span></li>
+        <li><span class="ver">Y+X</span><span class="txt">Clear the track, then A to record it again</span></li>
         <li><span class="ver">Y+B</span><span class="txt">Clear everything (it asks first)</span></li>
         <li><span class="ver">UP/DOWN</span><span class="txt">Pick a track (L2 / R2 work too)</span></li>
         <li><span class="ver">LEFT/RIGHT</span><span class="txt">Track volume</span></li>
@@ -136,14 +138,17 @@
 
   <section id="install" class="band alt">
     <div class="wrap section">
-      <h2>INSTALL</h2>
-      <p>BrickLooper has its own folder, next to BrickSampler. It doesn't touch your BrickSampler projects.</p>
+      <h2>DOWNLOAD AND INSTALL</h2>
+      <div class="ctas">
+        <a class="btn primary" href="/downloads/bricklooper/BrickLooper_v1.5.0.zip" download>Download BrickLooper 1.5.0</a>
+      </div>
+      <p class="small">BrickLooper_v1.5.0.zip · Free, GPL-3.0. The zip has the full source inside. Want to read the code first? <a href="https://github.com/brickworldhub/brickworldhub.github.io/tree/main/src/bricklooper" rel="noopener" target="_blank">See the source on GitHub</a>.</p>
       <ol class="steps">
-        <li><span class="dot">01</span><span>Download the latest release. [LINK]</span></li>
-        <li><span class="dot">02</span><span>Copy the <b>bricklooper</b> folder and its launcher to <b>roms/ports</b> on the SD card.</span></li>
-        <li><span class="dot">03</span><span>Launch BrickLooper from Ports. It opens on the <b>LOOP</b> page: pick the Source and record your first loop.</span></li>
+        <li><span class="dot">01</span><span>Download the zip and unzip it on your computer.</span></li>
+        <li><span class="dot">02</span><span>Copy <b>BrickLooper.sh</b>, the <b>.keys</b> files and the <b>bricklooper</b> folder to <b>roms/ports</b> on the SD card. It sits next to BrickSampler and doesn't touch it.</span></li>
+        <li><span class="dot">03</span><span>Start BrickLooper from Ports. The first time it unpacks a few files, which takes a few seconds. Then choose your input in <b>Source</b> on the LOOP page.</span></li>
       </ol>
-      <p class="note lcd">For USB, plug in an audio interface or a USB synth like the FM-1. The built-in mic is for sampling only: the Brick can't record from it while the speaker plays. Tested on KNULLI Scarab.</p>
+      <p class="note lcd">Hold SELECT for the controls, MENU + START closes the app. If something goes wrong, bricklooper/log.txt says why. Tested on KNULLI Scarab with a USB synth and a USB audio interface.</p>
     </div>
   </section>
 
@@ -151,12 +156,11 @@
     <div class="wrap section">
       <h2>NEXT UP</h2>
       <ul class="list roadmap">
-        <li><span>Five stereo tracks in sync, overdub, undo, record from USB and the sampler, saved with the project</span><span class="tag">v1.0</span></li>
+        <li><span>Five tracks in sync, USB or mic, metronome and count-in, add or replace, FX on the output</span><span class="tag">v1.5</span></li>
         <li><span>Free mode: tracks with their own length</span><span class="tag">Planned</span></li>
         <li><span>Control the looper from a MIDI keyboard or controller</span><span class="tag">Planned</span></li>
         <li><span>Automatic latency test</span><span class="tag">Idea</span></li>
         <li><span>Reverse, half speed and fade out for each track</span><span class="tag">Idea</span></li>
-        <li><span>Effects on the input before it is recorded</span><span class="tag">Idea</span></li>
       </ul>
     </div>
   </section>

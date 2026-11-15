@@ -27,12 +27,13 @@
  "@context": "https://schema.org",
  "@type": "SoftwareApplication",
  "name": "BrickTape",
- "softwareVersion": "0.1",
+ "softwareVersion": "1.0.0",
  "description": "A four-track recorder for the TrimUI Brick: four tracks, 10 minutes of tape, punch in and out, mix page and metronome.",
  "applicationCategory": "MultimediaApplication",
  "operatingSystem": "KNULLI (TrimUI Brick)",
  "url": "https://brickworldhub.com/tape.html",
  "image": "https://brickworldhub.com/bricktape-mockup.jpg",
+ "downloadUrl": "https://brickworldhub.com/downloads/bricktape/BrickTape_v1.0.0.zip",
  "license": "https://www.gnu.org/licenses/gpl-3.0.html",
  "isAccessibleForFree": true,
  "offers": {
@@ -77,6 +78,7 @@
     <nav aria-label="On this page">
       <a href="#features">Features</a>
       <a href="#controls">Controls</a>
+      <a href="#install">Download</a>
       <a href="#roadmap">Next</a>
     </nav>
   </div>
@@ -85,14 +87,14 @@
 <main>
   <section id="top" class="wrap hero">
     <div class="hero-copy">
-      <p class="kicker">A 4-track recorder for the TrimUI Brick · KNULLI · v0.1 beta</p>
+      <p class="kicker">A 4-track recorder for the TrimUI Brick · KNULLI · v1.0</p>
       <h1>Four tracks.<br>Ten minutes.<br>One cassette.</h1>
       <p style="max-width:34em">BrickTape is a small four-track recorder, like the cassette four-tracks of the 80s and 90s. Record up to four tracks, punch in to fix a mistake, then mix them. On the screen the reels turn while the tape plays.</p>
       <div class="ctas">
-        <a class="btn primary" href="#features">What it does</a>
-        <a class="btn" href="#controls">Controls</a>
+        <a class="btn primary" href="/downloads/bricktape/BrickTape_v1.0.0.zip" download>Download v1.0.0</a>
+        <a class="btn" href="#features">What it does</a>
       </div>
-      <p class="small">v0.1 beta · Tested on the Brick with the built-in mic · USB input still being tested</p>
+      <p class="small">Free and open source (GPL-3.0) · <a href="https://github.com/brickworldhub/brickworldhub.github.io/tree/main/src/bricktape" rel="noopener" target="_blank">Source code on GitHub</a></p>
     </div>
     <div>
       <img class="hero-img" src="bricktape-mockup.jpg" width="1000" height="1250" alt="BrickTape's TAPE page on a TrimUI Brick: a cassette with two reels, four level meters and four tracks, two of them recording">
@@ -111,7 +113,7 @@
         <div class="feature"><h3>UNDO THE LAST TAKE</h3><p>Not happy with what you just played? Take it back, or bring it back again.</p></div>
         <div class="feature"><h3>MIX PAGE</h3><p>For each track: input (left, right or both), volume, pan and mute.</p></div>
         <div class="feature"><h3>METRONOME</h3><p>A click from the start of the tape, to play in time. It is never recorded.</p></div>
-        <div class="feature"><h3>MIC OR USB</h3><p>Record from the built-in mic, a USB audio interface or a USB synth. The delay of the input is taken out for you.</p></div>
+        <div class="feature"><h3>USB OR MIC</h3><p>Record from a USB audio interface, a USB mic or a synth with USB audio. With a two-channel interface, two tracks can record two different inputs at once. Or use the built-in mic: while it records the sound stops, a limit of the Brick.</p></div>
         <div class="feature"><h3>SAVED IN THE PROJECT</h3><p>Your tracks are saved as WAV files with the project, together with where the tape was.</p></div>
       </div>
     </div>
@@ -134,11 +136,27 @@
     </div>
   </section>
 
-  <section id="roadmap" class="band alt">
+  <section id="install" class="band alt">
+    <div class="wrap section">
+      <h2>DOWNLOAD AND INSTALL</h2>
+      <div class="ctas">
+        <a class="btn primary" href="/downloads/bricktape/BrickTape_v1.0.0.zip" download>Download BrickTape 1.0.0</a>
+      </div>
+      <p class="small">BrickTape_v1.0.0.zip · Free, GPL-3.0. The zip has the full source inside. Want to read the code first? <a href="https://github.com/brickworldhub/brickworldhub.github.io/tree/main/src/bricktape" rel="noopener" target="_blank">See the source on GitHub</a>.</p>
+      <ol class="steps">
+        <li><span class="dot">01</span><span>Download the zip and unzip it on your computer.</span></li>
+        <li><span class="dot">02</span><span>Copy <b>BrickTape.sh</b>, the <b>.keys</b> files and the <b>bricktape</b> folder to <b>roms/ports</b> on the SD card. Updating? Copy over the old files: your projects stay.</span></li>
+        <li><span class="dot">03</span><span>Start BrickTape from Ports. The first time it unpacks a few files, which takes a few seconds. Not in the list? Update the games list in the KNULLI menu.</span></li>
+      </ol>
+      <p class="note lcd">Choose your input in SET &gt; SOURCE. Hold SELECT for the controls. If something goes wrong, bricktape/log.txt says why. Tested on KNULLI Scarab.</p>
+    </div>
+  </section>
+
+  <section id="roadmap" class="band">
     <div class="wrap section">
       <h2>NEXT UP</h2>
       <ul class="list roadmap">
-        <li><span>Four tracks, punch in and out, rewind with sound, mix page, metronome. Tested on the Brick with the built-in mic</span><span class="tag">v0.1 beta</span></li>
+        <li><span>Four tracks, punch in and out, rewind with sound, mix page, metronome. Tested on the Brick with a USB audio interface and the built-in mic</span><span class="tag">v1.0</span></li>
         <li><span>EQ and an effects send on each track</span><span class="tag">Next</span></li>
         <li><span>Bounce three tracks onto one, to free up space</span><span class="tag">Next</span></li>
         <li><span>Export the final mix as a stereo WAV</span><span class="tag">Next</span></li>

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BrickSampler – a sampler for the TrimUI Brick | BrickWorld</title>
-<meta name="description" content="BrickSampler is an 80s/90s-style sampler for the TrimUI Brick running KNULLI. Kit and chromatic modes, loops, chop, time-stretch, LFO, FX, MIDI learn and 8 ms latency.">
+<meta name="description" content="BrickSampler is a free 80s/90s-style sampler for the TrimUI Brick running KNULLI: record from USB or the mic, kit and chromatic modes, wave sequencing, loops, chop, time-stretch, LFO, FX, MIDI learn and 8 ms latency.">
 <!-- Test version: remove the next line when the site goes live -->
 <meta name="robots" content="noindex, nofollow">
 <meta property="og:title" content="BrickSampler">
@@ -27,12 +27,13 @@
  "@context": "https://schema.org",
  "@type": "SoftwareApplication",
  "name": "BrickSampler",
- "softwareVersion": "1.4",
- "description": "An 80s/90s-style sampler for the TrimUI Brick: kit and chromatic modes, loops, chop, time-stretch, LFO, FX, MIDI learn and 8 ms latency.",
+ "softwareVersion": "2.0.0",
+ "description": "An 80s/90s-style sampler for the TrimUI Brick: USB and mic recording, kit and chromatic modes, wave sequencing, loops, chop, time-stretch, LFO, FX and MIDI learn.",
  "applicationCategory": "MultimediaApplication",
  "operatingSystem": "KNULLI (TrimUI Brick)",
  "url": "https://brickworldhub.com/sampler.html",
  "image": "https://brickworldhub.com/bricksampler-mockup.jpg",
+ "downloadUrl": "https://brickworldhub.com/downloads/bricksampler/BrickSampler_v2.0.0.zip",
  "license": "https://www.gnu.org/licenses/gpl-3.0.html",
  "isAccessibleForFree": true,
  "offers": {
@@ -77,8 +78,9 @@
     <nav aria-label="On this page">
       <a href="#features">Features</a>
       <a href="#changes">Changes</a>
-      <a href="#install">Install</a>
-      <a href="#roadmap">2.0</a>
+      <a href="#install">Download</a>
+      <a href="#wseq">Wave seq</a>
+      <a href="#roadmap">Next</a>
     </nav>
   </div>
 </div>
@@ -86,14 +88,14 @@
 <main>
   <section id="top" class="wrap hero">
     <div class="hero-copy">
-      <p class="kicker">A sampler for the TrimUI Brick · KNULLI · v1.4</p>
+      <p class="kicker">A sampler for the TrimUI Brick · KNULLI · v2.0</p>
       <h1>Sample it.<br>Play it.<br>Pocket it.</h1>
-      <p style="max-width:34em">An 80s/90s-style sampler that runs on a handheld. Record from the mic, loop and chop what you caught, map it across 16 pads or play it chromatically, then shape it with an LFO and the FX section. Plug in a MIDI keyboard and it answers in 8 ms.</p>
+      <p style="max-width:34em">An 80s/90s-style sampler that runs on a handheld. Record from a USB audio device or the mic, loop and chop what you caught, play it from 16 pads or across a keyboard, line your sounds up as wave sequences, then shape it all with an LFO and the FX section. Plug in a MIDI keyboard and it answers in 8 ms.</p>
       <div class="ctas">
-        <a class="btn primary" href="#install">Download v1.4</a>
+        <a class="btn primary" href="/downloads/bricksampler/BrickSampler_v2.0.0.zip" download>Download v2.0.0</a>
         <a class="btn" href="#features">What it does</a>
       </div>
-      <p class="small">[DOWNLOAD LINK] · Free and open source (GPL-3.0)</p>
+      <p class="small">Free and open source (GPL-3.0) · <a href="https://github.com/brickworldhub/brickworldhub.github.io/tree/main/src/bricksampler" rel="noopener" target="_blank">Source code on GitHub</a></p>
     </div>
     <div>
       <img class="hero-img" src="bricksampler-mockup.jpg" width="1000" height="1250" alt="BrickSampler's Sample Edit screen glowing orange on a TrimUI Brick, on a dark surface">
@@ -106,12 +108,14 @@
       <div class="features">
         <div class="feature"><h3>KIT MODE</h3><p>A different sample on each of the 16 pads, on MIDI notes 36–51 (General MIDI drum layout). Pads are one-shot and choke themselves when you hit them again.</p></div>
         <div class="feature"><h3>CHROMATIC MODE</h3><p>One sample across the keyboard, 8 voices, sustain pedal and pitch bend. Attack, decay, sustain, release and velocity on every slot.</p></div>
-        <div class="feature"><h3>MIC RECORDING</h3><p>Sample straight from the Brick's microphone at 32, 44.1 or 48 kHz, 8, 16 or 24 bit. Every take gets a name before it's saved.</p></div>
+        <div class="feature"><h3>RECORD FROM USB OR MIC</h3><p>Sample from a USB audio interface, a USB mic or a synth with USB audio, from channel 1, 2 or both. Or use the Brick's own mic. 32 to 48 kHz, 8 to 24 bit, and every take gets a name before it's saved.</p></div>
+        <div class="feature"><h3>WAVE SEQUENCES</h3><p>Line up to 64 of your samples as steps and one key plays them in turn, like on a Korg Wavestation. More about it below.</p></div>
         <div class="feature"><h3>LOOPS</h3><p>Loop points set apart from start and end, so the attack plays once and the body repeats. A crossfade hides the join, a close-up shows the seam, Zero Snap finds a clean point.</p></div>
+        <div class="feature"><h3>KEEP THE GOOD PART</h3><p>Happy with the start and end? Save just that part as a new sample, or overwrite the original.</p></div>
         <div class="feature"><h3>CHOP</h3><p>Cut a break or a phrase into 4, 8 or 16 equal slices, or let it find the hits on its own. The slices land on the pads, ready to play.</p></div>
         <div class="feature"><h3>TIME-STRETCH</h3><p>Make a sample 50% to 200% as long without changing its pitch. The result is saved as a new file, the original stays as it was.</p></div>
         <div class="feature"><h3>LFO</h3><p>Sine, triangle, saw, square or sample-and-hold, on pitch, volume and filter cutoff. Delay to fade it in, mod wheel to ride the depth.</p></div>
-        <div class="feature"><h3>FX SECTION</h3><p>Drive, bitcrush, downsample, a resonant low/high/band-pass filter, stereo delay with ping-pong, and reverb. Each section switches off with one button and keeps its settings.</p></div>
+        <div class="feature"><h3>FX SECTION</h3><p>Drive, bitcrush, downsample, a resonant low/high/band-pass filter, stereo delay with ping-pong, and reverb. Switch each section on or off with no clicks: the echoes and the reverb tail ring out.</p></div>
         <div class="feature"><h3>MIDI LEARN</h3><p>Any USB MIDI keyboard or controller. Point at an FX or LFO value, turn a knob, and that knob is now in charge. The map stays for every project.</p></div>
         <div class="feature"><h3>8 MS LATENCY</h3><p>The audio engine runs in C on its own real-time thread, apart from the screen. Fast attacks on a piano feel immediate.</p></div>
         <div class="feature"><h3>PROJECTS</h3><p>Save as many projects as you like, each with its own samples, settings, LFO and FX. Rename or delete samples from the browser.</p></div>
@@ -124,11 +128,13 @@
     <div class="wrap section">
       <h2>CHANGES</h2>
       <ul class="list">
+        <li><span class="ver">2.0</span><span class="txt">Wave sequencing on the new WSEQ page. SAMPLE and EDIT are now one page, with a TOOLS menu. Save the region as a new sample. FX switch on and off without clicks. USB sources are shown as "USB".</span></li>
+        <li><span class="ver">1.4.x</span><span class="txt">Record from USB: audio interface, USB mic or synth with USB audio. The volume buttons set the output volume.</span></li>
         <li><span class="ver">1.4</span><span class="txt">New EDIT page with loop points, crossfade and Zero Snap. Chop onto pads, time-stretch, the LFO page and MIDI learn.</span></li>
         <li><span class="ver">1.2.3</span><span class="txt">Audio engine rewritten in C on its own thread. MIDI latency down to 8 ms, with a Low / Mid / Safe setting.</span></li>
         <li><span class="ver">1.2</span><span class="txt">Named projects, sample rename and delete, a name for every take, on/off switch for each FX section, four display colours.</span></li>
         <li><span class="ver">1.1</span><span class="txt">Settings page: recording sample rate and bit depth, engine status.</span></li>
-        <li><span class="ver">1.0</span><span class="txt">Kit and chromatic modes, FX, MIDI in, mic recording, the dot-matrix screen.</span></li>
+        <li><span class="ver">1.0</span><span class="txt">Kit and chromatic modes, FX, MIDI in, recording from the mic, the dot-matrix screen.</span></li>
       </ul>
     </div>
   </section>
@@ -146,47 +152,55 @@
 
   <section id="install" class="band">
     <div class="wrap section">
-      <h2>INSTALL</h2>
-      <p>Runs on the TrimUI Brick with KNULLI. Nothing else to install: everything it needs is in the folder.</p>
+      <h2>DOWNLOAD AND INSTALL</h2>
+      <div class="ctas">
+        <a class="btn primary" href="/downloads/bricksampler/BrickSampler_v2.0.0.zip" download>Download BrickSampler 2.0.0</a>
+      </div>
+      <p class="small">BrickSampler_v2.0.0.zip · Free, GPL-3.0. The zip has the full source inside. Want to read the code first? <a href="https://github.com/brickworldhub/brickworldhub.github.io/tree/main/src/bricksampler" rel="noopener" target="_blank">See the source on GitHub</a>.</p>
       <ol class="steps">
-        <li><span class="dot">01</span><span>Download the latest release. [LINK]</span></li>
-        <li><span class="dot">02</span><span>Copy the <b>bricksampler</b> folder and <b>BrickSampler.sh</b> to <b>roms/ports</b> on the SD card.</span></li>
-        <li><span class="dot">03</span><span>Launch BrickSampler from Ports in KNULLI. Your WAVs go in <b>bricksampler/samples</b>.</span></li>
+        <li><span class="dot">01</span><span>Download the zip and unzip it on your computer.</span></li>
+        <li><span class="dot">02</span><span>Copy <b>BrickSampler.sh</b>, the <b>.keys</b> files and the <b>bricksampler</b> folder to <b>roms/ports</b> on the SD card.</span></li>
+        <li><span class="dot">03</span><span>Start BrickSampler from Ports. The first time it unpacks a few files, which takes a few seconds. Your WAVs go in <b>bricksampler/samples</b>.</span></li>
       </ol>
-      <p class="note lcd">Hold SELECT for the controls. MENU + START closes the app. Tested on KNULLI Scarab.</p>
+      <p class="note lcd">Updating? Keep your bricksampler/samples, bricksampler/projects and settings.json. Hold SELECT for the controls, MENU + START closes the app. If something goes wrong, bricksampler/log.txt says why. Tested on KNULLI Scarab.</p>
     </div>
   </section>
-
-  <section id="roadmap" class="band alt">
+  <section id="wseq" class="band alt">
     <div class="wrap section" style="gap:40px">
       <div style="display:flex;flex-direction:column;gap:12px">
-        <p class="kicker">Coming in 2.0</p>
+        <p class="kicker">New in 2.0</p>
         <h2>WAVE SEQUENCING</h2>
       </div>
       <div class="ws">
         <div class="ws-copy">
-          <p>I used to own a Korg Wavestation, and its wave sequences were the thing I missed most. In 2.0 they come to BrickSampler, built from your own samples.</p>
+          <p>I used to own a Korg Wavestation, and its wave sequences were the thing I missed most. Now they are in BrickSampler, built from your own samples.</p>
           <p>Record a few sounds, line them up as steps, and one key plays them in turn: each step with its own length, level and tuning, sliding into the next with a crossfade or cutting straight to it. Loop part of the sequence, back and forth if you like, and move through it with velocity or the mod wheel.</p>
-          <p>It's a switch on the sample page. Leave it off and the slot plays a single sample, as now.</p>
+          <p>It's a switch on the sample page. Leave it off and the slot plays a single sample, as before.</p>
         </div>
         <div class="ws-spec lcd">
           <h3>PER STEP</h3>
-          <p>Sample · duration or gate · crossfade · level · coarse and fine tune</p>
+          <p>Sample and its region · duration or gate · crossfade · level · coarse and fine tune · loop</p>
           <h3>PER SEQUENCE</h3>
-          <p>Start step · loop start and end · forward or back-and-forth · repeats or endless · tempo and time scale · key sync or free-running</p>
+          <p>Up to 64 steps · start step · loop forward or back-and-forth · repeats or endless · tempo · key sync or free-running</p>
           <h3>CONTROL</h3>
-          <p>Start step by velocity · mod wheel scans the sequence · LFO on step timing</p>
+          <p>Start step by velocity · mod wheel scans the sequence</p>
         </div>
       </div>
+    </div>
+  </section>
+
+  <section id="roadmap" class="band">
+    <div class="wrap section">
+      <h2>NEXT UP</h2>
       <ul class="list roadmap">
-        <li><span>Wave sequences built from your samples, switchable per slot and per pad</span><span class="tag">2.0</span></li>
-        <li><span>Knobs and faders on the main parameters, drawn light enough for the Brick</span><span class="tag">2.0</span></li>
-        <li><span>Vector mix of up to four sequences, moved by an envelope or two MIDI knobs</span><span class="tag">2.x</span></li>
-        <li><span>Recording and playback through a USB-C audio interface</span><span class="tag">Later</span></li>
+        <li><span>Wave sequencing, one SAMPLE page with tools, save region as new, FX without clicks</span><span class="tag">v2.0</span></li>
+        <li><span>Knobs and faders on the main settings, drawn light enough for the Brick</span><span class="tag">Next</span></li>
+        <li><span>Vector mix of up to four sequences, moved by an envelope or two MIDI knobs</span><span class="tag">Later</span></li>
+        <li><span>Sound out through a USB audio interface (headphones on the interface)</span><span class="tag">Later</span></li>
       </ul>
     </div>
   </section>
-  <section id="get-a-brick" class="band">
+  <section id="get-a-brick" class="band alt">
     <div class="wrap why">
       <h2>NO BRICK YET?</h2>
       <div>
