@@ -1,0 +1,16 @@
+BrickTape 1.0.0 - a 4-track tape recorder for the TrimUI Brick (KNULLI)
+https://brickworldhub.com
+
+1. Copy BrickTape.sh, the .keys files and the bricktape folder to roms/ports
+   on the SD card. (Updating? Copy over the old files: your projects stay.)
+2. Start BrickTape from Ports. The first start unpacks NumPy (a few seconds).
+   Not in the list? Update the games list in the KNULLI menu.
+
+Input: a USB audio interface, USB mic or synth with USB audio (plug it in,
+then choose it in SET > SOURCE), or the built-in mic. With the built-in mic
+the sound stops while you record (a limit of the Brick).
+
+Hold SELECT for the controls of the page you are on.
+If something goes wrong, bricktape/log.txt says why.
+
+Free software, GNU GPL v3 (see LICENSE). Source included.

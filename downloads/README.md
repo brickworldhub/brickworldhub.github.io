@@ -1,0 +1,9 @@
+# BrickWorld downloads
+
+Free apps for the TrimUI Brick (KNULLI). Each zip is ready to copy to `roms/ports` on the SD card, and has the full source inside (GNU GPL v3).
+
+| App | Version | File |
+|---|---|---|
+| BrickTape – 4-track tape recorder | 1.0.0 | [bricktape/BrickTape_v1.0.0.zip](bricktape/BrickTape_v1.0.0.zip) |
+
+Source code, easy to read online: [`src/`](../src/).
