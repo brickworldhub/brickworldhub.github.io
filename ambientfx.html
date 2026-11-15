@@ -27,12 +27,13 @@
  "@context": "https://schema.org",
  "@type": "SoftwareApplication",
  "name": "BrickAmbientFX (Sarta Edition)",
- "softwareVersion": "0.1",
+ "softwareVersion": "1.0.0",
  "description": "A stereo effects unit for ambient music on the TrimUI Brick: compressor, amp and cabinet, modulation, delay and reverb, with freeze and split routing.",
  "applicationCategory": "MultimediaApplication",
  "operatingSystem": "KNULLI (TrimUI Brick)",
  "url": "https://brickworldhub.com/ambientfx.html",
  "image": "https://brickworldhub.com/brickambientfx-mockup.jpg",
+ "downloadUrl": "https://brickworldhub.com/downloads/brickambientfx/BrickAmbientFX_v1.0.0.zip",
  "license": "https://www.gnu.org/licenses/gpl-3.0.html",
  "isAccessibleForFree": true,
  "offers": {
@@ -77,6 +78,7 @@
     <nav aria-label="On this page">
       <a href="#setup">Setup</a>
       <a href="#chain">The chain</a>
+      <a href="#install">Download</a>
       <a href="#roadmap">Next</a>
     </nav>
   </div>
@@ -85,14 +87,14 @@
 <main>
   <section id="top" class="wrap hero">
     <div class="hero-copy">
-      <p class="kicker">An ambient effects unit for the TrimUI Brick · KNULLI · v0.1 · Sarta Edition</p>
+      <p class="kicker">An ambient effects unit for the TrimUI Brick · KNULLI · v1.0 · Sarta Edition</p>
       <h1>Big rooms.<br>Long tails.<br>Slow swells.</h1>
       <p style="max-width:34em">BrickAmbientFX is a stereo effects unit made for ambient music. It started from BrickFX, with the reverbs, delays and modulation pushed much further, plus a compressor, an amp with cabinets and a freeze button. Plug a USB synth or a USB audio interface into the Brick and play.</p>
       <div class="ctas">
-        <a class="btn primary" href="#chain">The chain</a>
-        <a class="btn" href="#setup">How it works</a>
+        <a class="btn primary" href="/downloads/brickambientfx/BrickAmbientFX_v1.0.0.zip" download>Download v1.0.0</a>
+        <a class="btn" href="#chain">The chain</a>
       </div>
-      <p class="small">v0.1 runs on the Brick · In development · Same look and controls as the other BrickWorld apps</p>
+      <p class="small">Free and open source (GPL-3.0) · <a href="https://github.com/brickworldhub/brickworldhub.github.io/tree/main/src/brickambientfx" rel="noopener" target="_blank">Source code on GitHub</a></p>
     </div>
     <div>
       <img class="hero-img" src="brickambientfx-mockup.jpg" width="1000" height="1250" alt="BrickAmbientFX on a TrimUI Brick: the effect chain with delay and reverb side by side, and a long reverb tail">
@@ -102,7 +104,7 @@
   <section id="setup" class="band alt">
     <div class="wrap section">
       <h2>SETUP</h2>
-      <p>The same setup as BrickFX: one cable in, one cable out.</p>
+      <p>The same setup as BrickFX: one cable in, one cable out. It needs a good sound source, so the input is USB only, not the Brick's mic.</p>
       <ol class="steps">
         <li><span class="dot">01</span><span>Connect a USB synth, like the FM-1, or a <b>USB audio interface</b> to the Brick's <b>USB</b> port. Anything you can plug into the interface can go through it.</span></li>
         <li><span class="dot">02</span><span>Run a cable from the Brick's <b>headphone jack</b> into your audio interface, mixer or amp.</span></li>
@@ -130,11 +132,27 @@
     </div>
   </section>
 
-  <section id="roadmap" class="band alt">
+  <section id="install" class="band alt">
+    <div class="wrap section">
+      <h2>DOWNLOAD AND INSTALL</h2>
+      <div class="ctas">
+        <a class="btn primary" href="/downloads/brickambientfx/BrickAmbientFX_v1.0.0.zip" download>Download BrickAmbientFX 1.0.0</a>
+      </div>
+      <p class="small">BrickAmbientFX_v1.0.0.zip · Free, GPL-3.0. The zip has the full source inside. Want to read the code first? <a href="https://github.com/brickworldhub/brickworldhub.github.io/tree/main/src/brickambientfx" rel="noopener" target="_blank">See the source on GitHub</a>.</p>
+      <ol class="steps">
+        <li><span class="dot">01</span><span>Download the zip and unzip it on your computer.</span></li>
+        <li><span class="dot">02</span><span>Copy <b>BrickAmbientFX.sh</b>, the <b>.keys</b> files and the <b>brickambientfx</b> folder to <b>roms/ports</b> on the SD card. It sits next to BrickFX and doesn't touch it.</span></li>
+        <li><span class="dot">03</span><span>Connect your USB device and the jack, then start BrickAmbientFX from Ports. The first time it unpacks a few files, which takes a few seconds.</span></li>
+      </ol>
+      <p class="note lcd">Tap SELECT to freeze, hold SELECT for the controls, SELECT + START closes the app. If something goes wrong, brickambientfx/log.txt says why. Tested on KNULLI Scarab.</p>
+    </div>
+  </section>
+
+  <section id="roadmap" class="band">
     <div class="wrap section">
       <h2>NEXT UP</h2>
       <ul class="list roadmap">
-        <li><span>The chain, Split routing, freeze, 16 presets, switching without clicks. Tested on the Brick</span><span class="tag">v0.1</span></li>
+        <li><span>The chain, Split routing, freeze, 16 presets, switching without clicks. Tested on the Brick with a USB synth and an audio interface</span><span class="tag">v1.0</span></li>
         <li><span>EQ and a full-screen oscilloscope, like in BrickFX</span><span class="tag">Next</span></li>
         <li><span>Change the order of the sections, and a second Split mode (left input to one path, right input to the other)</span><span class="tag">Later</span></li>
         <li><span>A looper to capture what you play</span><span class="tag">Idea</span></li>

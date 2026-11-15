@@ -59,6 +59,11 @@ h1{font-weight:900;font-size:clamp(48px,7vw,84px);line-height:1}
 .list .txt{flex:1 1 480px;min-width:0}
 .keys .ver{flex-basis:170px;font-size:22px}
 .roadmap li{justify-content:space-between;gap:8px;padding:18px 0}
+.downloads li{align-items:center;gap:12px 24px}
+.dl-name{font-family:'Doto',monospace;font-weight:900;font-size:22px;color:var(--accent);flex:1 1 220px}
+.dl-ver{color:var(--muted);font-size:14px;letter-spacing:.08em;flex:0 0 70px}
+.dl-links{display:flex;align-items:center;gap:20px;flex:0 0 auto}
+.dl-links .btn{min-height:44px;padding:0 20px}
 .tag{color:var(--muted);font-size:14px;text-transform:uppercase;letter-spacing:.08em}
 
 /* two-column text */

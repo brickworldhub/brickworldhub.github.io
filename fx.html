@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BrickFX – a stereo effects unit for the TrimUI Brick | BrickWorld</title>
-<meta name="description" content="BrickFX turns the TrimUI Brick into a stereo effects unit. Any sound in over USB, from a synth or through a USB audio interface, and out of the jack. Four effects in a chain: drive, modulation, delay and reverb.">
+<meta name="description" content="BrickFX is a free stereo effects unit for the TrimUI Brick running KNULLI. Any sound in over USB, from a synth or a USB audio interface, and out of the jack. Drive, modulation, delay, reverb and EQ in a chain, plus a full-screen oscilloscope.">
 <!-- Test version: remove the next line when the site goes live -->
 <meta name="robots" content="noindex, nofollow">
 <meta property="og:title" content="BrickFX">
@@ -27,12 +27,13 @@
  "@context": "https://schema.org",
  "@type": "SoftwareApplication",
  "name": "BrickFX",
- "softwareVersion": "0.2",
- "description": "A stereo effects unit for the TrimUI Brick: drive, modulation, delay and reverb in a chain.",
+ "softwareVersion": "1.0.0",
+ "description": "A stereo effects unit for the TrimUI Brick: drive, modulation, delay, reverb and EQ in a chain, with a full-screen oscilloscope.",
  "applicationCategory": "MultimediaApplication",
  "operatingSystem": "KNULLI (TrimUI Brick)",
  "url": "https://brickworldhub.com/fx.html",
  "image": "https://brickworldhub.com/brickfx-mockup.jpg",
+ "downloadUrl": "https://brickworldhub.com/downloads/brickfx/BrickFX_v1.0.0.zip",
  "license": "https://www.gnu.org/licenses/gpl-3.0.html",
  "isAccessibleForFree": true,
  "offers": {
@@ -78,6 +79,7 @@
       <a href="#setup">Setup</a>
       <a href="#chain">The chain</a>
       <a href="#engine">Engine</a>
+      <a href="#install">Download</a>
       <a href="#roadmap">Next</a>
     </nav>
   </div>
@@ -86,14 +88,14 @@
 <main>
   <section id="top" class="wrap hero">
     <div class="hero-copy">
-      <p class="kicker">A stereo effects unit for the TrimUI Brick · KNULLI · v0.2</p>
+      <p class="kicker">A stereo effects unit for the TrimUI Brick · KNULLI · v1.0</p>
       <h1>Plug in.<br>Play.<br>Echo out.</h1>
-      <p style="max-width:34em">BrickFX turns the Brick into a stereo effects box. Plug a USB synth or a USB audio interface into the Brick, and any sound can go through it: synths, drum machines, a guitar, a mic. It comes back out of the jack through four effects in a chain: drive, modulation, delay and reverb.</p>
+      <p style="max-width:34em">BrickFX turns the Brick into a stereo effects box. Plug a USB synth or a USB audio interface into the Brick, and any sound can go through it: synths, drum machines, a guitar, a mic on the interface. It comes back out of the jack through five effects in a chain.</p>
       <div class="ctas">
-        <a class="btn primary" href="#setup">How it works</a>
+        <a class="btn primary" href="/downloads/brickfx/BrickFX_v1.0.0.zip" download>Download v1.0.0</a>
         <a class="btn" href="#chain">The chain</a>
       </div>
-      <p class="small">v0.2 runs on the Brick · In development · Same look and controls as BrickSampler</p>
+      <p class="small">Free and open source (GPL-3.0) · <a href="https://github.com/brickworldhub/brickworldhub.github.io/tree/main/src/brickfx" rel="noopener" target="_blank">Source code on GitHub</a></p>
     </div>
     <div>
       <img class="hero-img" src="brickfx-mockup.jpg" width="1000" height="1250" alt="BrickFX delay page on the TrimUI Brick, with stereo meters and ping-pong echoes">
@@ -103,30 +105,30 @@
   <section id="setup" class="band alt">
     <div class="wrap section">
       <h2>SETUP</h2>
-      <p>Two ways in, one way out. Use a USB synth on its own, or a USB audio interface for everything else.</p>
+      <p>BrickFX is made for a good sound source, so it takes its input from USB only, not from the Brick's mic.</p>
       <ol class="steps">
-        <li><span class="dot">01</span><span>Connect your sound to the Brick's <b>USB</b> port. A synth with USB audio, like the FM-1, plugs in directly. For anything else, use a <b>USB audio interface</b>: whatever you can plug into it can go through BrickFX.</span></li>
-        <li><span class="dot">02</span><span>Run a cable from the Brick's <b>headphone jack</b> into your audio interface or mixer.</span></li>
-        <li><span class="dot">03</span><span>Open BrickFX, pick the input and the channels on the <b>I/O</b> page, and play.</span></li>
+        <li><span class="dot">01</span><span>Connect your sound to the Brick's <b>USB</b> port. A synth with USB audio, like the FM-1, plugs in directly. For anything else, use a <b>USB audio interface</b>.</span></li>
+        <li><span class="dot">02</span><span>Run a cable from the Brick's <b>headphone jack</b> into your audio interface, mixer or headphones.</span></li>
+        <li><span class="dot">03</span><span>Open BrickFX. The <b>I/O</b> page shows the USB input and its status. Pick a preset and play.</span></li>
       </ol>
-      <p class="note lcd">The FM-1 and an M-Audio interface both show up on the Brick as USB audio. Most class-compliant interfaces (the ones that need no driver) should work the same way.</p>
-      <p class="note lcd">Pages: I/O · CHAIN · DRV · MOD · DLY · REV · SET. If your synth sounds quiet over USB, turn up Input gain on the I/O page.</p>
+      <p class="note lcd">Pages: I/O · CHAIN · DRV · MOD · DLY · REV · EQ · SET. If your synth sounds quiet over USB, turn up Input gain on the I/O page.</p>
     </div>
   </section>
 
   <section id="chain" class="band">
     <div class="wrap section">
       <h2>THE CHAIN</h2>
-      <p style="max-width:40em">Four sections, one after the other: DRIVE, MOD, DELAY, REVERB. In each one you pick one type, or switch it off. Every section has its own page, with a picture of what it does: the echoes, the drive curve, the modulation wave, the size of the room.</p>
+      <p style="max-width:40em">Five sections, one after the other: DRIVE, MOD, DELAY, REVERB, EQ. In each one you pick one type, or switch it off. Every section has its own page, with a picture of what it does. Change a type or switch a section while you play: no clicks, and the echoes and the reverb tail ring out.</p>
       <div class="features">
-        <div class="feature"><h3>DRIVE</h3><p>Drive, fuzz or crush. From a warm push to broken and dirty.</p></div>
-        <div class="feature"><h3>MOD</h3><p>Chorus, phaser, tremolo, auto-pan or vibrato.</p></div>
-        <div class="feature"><h3>DELAY</h3><p>Digital, tape or analog. Stereo, ping-pong or mono, time in ms or locked to a note value, tap tempo, high and low cut in the repeats, width.</p></div>
-        <div class="feature"><h3>REVERB</h3><p>Room, plate or hall, in stereo.</p></div>
-        <div class="feature"><h3>PRESETS</h3><p>Ready-made sounds to start from, one button away.</p></div>
+        <div class="feature"><h3>DRIVE</h3><p>Drive, fuzz or crush. The volume stays about the same as you turn it up.</p></div>
+        <div class="feature"><h3>MOD</h3><p>Chorus, phaser, tremolo, auto-pan or vibrato, wide in stereo.</p></div>
+        <div class="feature"><h3>DELAY</h3><p>Digital, tape or analog, up to 2 seconds. Stereo, ping-pong or mono, time in ms or locked to a note value, tap tempo, high and low cut in the repeats.</p></div>
+        <div class="feature"><h3>REVERB</h3><p>Room, plate or hall, in stereo. Long tails never clip.</p></div>
+        <div class="feature"><h3>EQ</h3><p>Three bands at the end of the chain: low, mid and high, with the curve drawn on the screen.</p></div>
+        <div class="feature"><h3>OSCILLOSCOPE</h3><p>Tap SELECT for a full-screen scope: input or output, left and right, or an XY view to see how wide your stereo is. A held note stands still on the screen.</p></div>
+        <div class="feature"><h3>8 PRESETS</h3><p>Ready-made sounds to start from, from ping-pong with plate to a big ambient wash. Your changes save on their own.</p></div>
         <div class="feature"><h3>MIDI</h3><p>MIDI learn for any value, MIDI clock for the delay, program change for the presets.</p></div>
       </div>
-      <p class="note lcd">With all four sections on, BrickFX uses less than 10% of the Brick's CPU. There is room for more.</p>
     </div>
   </section>
 
@@ -134,28 +136,42 @@
     <div class="wrap why">
       <h2>UNDER THE HOOD</h2>
       <div>
-        <p>The audio runs in C on its own real-time thread, like the engine in BrickSampler. It reads the USB input directly and writes straight to the jack, so the screen can never hold up the sound.</p>
-        <p>Your USB device and the Brick each have their own clock, and over a few minutes they slowly drift apart: the FM-1 runs about 0.2% faster than the Brick. A small adaptive resampler keeps them in step, so there are no clicks or drop-outs on long sessions.</p>
-        <p>The goal is 10 to 15 ms from input to output.</p>
+        <p>All the audio runs in C, on its own real-time threads. It reads the USB input directly and writes straight to the jack, so the screen can never hold up the sound.</p>
+        <p>Your USB device and the Brick each have their own clock, and over a few minutes they slowly drift apart. A small resampler keeps them in step, so there are no clicks or drop-outs on long sessions.</p>
+        <p>From input to output it takes about 6 ms plus the output setting (8, 16 or 32 ms). The I/O page shows the real figure.</p>
       </div>
     </div>
   </section>
 
-  <section id="roadmap" class="band">
+  <section id="install" class="band">
+    <div class="wrap section">
+      <h2>DOWNLOAD AND INSTALL</h2>
+      <div class="ctas">
+        <a class="btn primary" href="/downloads/brickfx/BrickFX_v1.0.0.zip" download>Download BrickFX 1.0.0</a>
+      </div>
+      <p class="small">BrickFX_v1.0.0.zip · Free, GPL-3.0. The zip has the full source inside. Want to read the code first? <a href="https://github.com/brickworldhub/brickworldhub.github.io/tree/main/src/brickfx" rel="noopener" target="_blank">See the source on GitHub</a>.</p>
+      <ol class="steps">
+        <li><span class="dot">01</span><span>Download the zip and unzip it on your computer.</span></li>
+        <li><span class="dot">02</span><span>Copy <b>BrickFX.sh</b>, the <b>.keys</b> files and the <b>brickfx</b> folder to <b>roms/ports</b> on the SD card.</span></li>
+        <li><span class="dot">03</span><span>Connect your USB device and the jack, then start BrickFX from Ports. The first time it unpacks a few files, which takes a few seconds.</span></li>
+      </ol>
+      <p class="note lcd">Hold SELECT for the controls, SELECT + START closes the app. If something goes wrong, brickfx/log.txt says why. Tested on KNULLI Scarab.</p>
+    </div>
+  </section>
+
+  <section id="roadmap" class="band alt">
     <div class="wrap section">
       <h2>NEXT UP</h2>
       <ul class="list roadmap">
-        <li><span>Stereo delay, presets, MIDI learn and MIDI clock. Tested on the Brick</span><span class="tag">v0.1</span></li>
-        <li><span>The chain: drive, mod, delay and reverb, each with its own page</span><span class="tag">v0.2</span></li>
-        <li><span>3-band EQ, with the curve drawn on the screen</span><span class="tag">Next</span></li>
-        <li><span>Full-screen oscilloscope, with an XY view for stereo width</span><span class="tag">Next</span></li>
+        <li><span>Five effects in a chain, EQ, oscilloscope, presets, MIDI learn and clock</span><span class="tag">v1.0</span></li>
         <li><span>Change the order of the sections</span><span class="tag">Later</span></li>
         <li><span>More types: pitch shifter, reverse delay, shimmer reverb, and a texture section with filter, compressor and cassette</span><span class="tag">Later</span></li>
         <li><span>Mod speed in time with MIDI clock</span><span class="tag">Later</span></li>
+        <li><span>Scope: hold the picture, and a spectrum view</span><span class="tag">Idea</span></li>
       </ul>
     </div>
   </section>
-  <section id="get-a-brick" class="band alt">
+  <section id="get-a-brick" class="band">
     <div class="wrap why">
       <h2>NO BRICK YET?</h2>
       <div>
