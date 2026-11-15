@@ -1,0 +1,13 @@
+BrickAmbientFX v1.0.0 (Sarta Edition) - TrimUI Brick (KNULLI)
+
+1. Copy everything in this folder (BrickAmbientFX.sh, the .keys files and the
+   brickambientfx folder) to roms/ports on the SD card. It sits next to
+   BrickFX and BrickSampler and does not touch them.
+2. Connect a USB audio device (a synth with USB audio or an audio interface)
+   to the Brick's USB-C port.
+   Connect the Brick's headphone jack to your audio interface.
+3. Start BrickAmbientFX from Ports. The first start unpacks NumPy (a few seconds).
+
+Tap SELECT to freeze delay and reverb. Hold SELECT for the controls.
+SELECT + START closes the app.
+If something goes wrong, brickambientfx/log.txt says why.
