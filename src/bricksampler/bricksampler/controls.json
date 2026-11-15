@@ -1,0 +1,9 @@
+{
+  "audio_backend": "auto",
+  "alsa_device": "default",
+  "alsa_capture": "default",
+  "audio_buffer": 1024,
+  "raw_joystick": true,
+  "swap_ab": false,
+  "joy_buttons": {"5": "a", "4": "b", "7": "y", "6": "x", "8": "l1", "9": "r1", "10": "l2", "11": "r2", "12": "select", "13": "start"}
+}
