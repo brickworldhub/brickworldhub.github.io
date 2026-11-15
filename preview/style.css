@@ -32,7 +32,7 @@ nav a[aria-current="page"]{color:var(--text);border-bottom:2px solid var(--accen
 .hero-copy{display:flex;flex-direction:column;gap:24px}
 h1{font-weight:900;font-size:clamp(48px,7vw,84px);line-height:1}
 .ctas{display:flex;flex-wrap:wrap;gap:16px;margin-top:8px}
-.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 28px;text-decoration:none;text-transform:uppercase;letter-spacing:.08em;border-radius:2px;border:1px solid var(--accent)}
+.btn{display:inline-flex;align-items:center;justify-content:center;text-align:center;line-height:1.35;min-height:48px;padding:8px 28px;text-decoration:none;text-transform:uppercase;letter-spacing:.08em;border-radius:2px;border:1px solid var(--accent)}
 .btn.primary{background:var(--accent);color:var(--bg);font-weight:600}
 .btn.primary:hover{background:var(--accent-hi);color:var(--bg)}
 .hero-img{display:block;width:100%;height:auto;max-width:520px;margin:0 auto;border-radius:4px}
@@ -46,6 +46,14 @@ h1{font-weight:900;font-size:clamp(48px,7vw,84px);line-height:1}
 .product h3{font-weight:900;font-size:32px}
 .status{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);border:1px solid var(--line);padding:2px 10px}
 .product .btn{margin-top:auto;align-self:flex-start}
+
+/* buy a brick */
+.brick-box{display:flex;flex-wrap:wrap;gap:40px;align-items:center}
+.brick-box img{flex:1 1 360px;min-width:0;width:100%;height:auto;border-radius:4px;border:2px solid var(--line)}
+.brick-copy{flex:1 1 380px;min-width:0;display:flex;flex-direction:column;gap:18px}
+.brick-specs{margin:0;padding:0;list-style:none;border-top:1px solid var(--line)}
+.brick-specs li{padding:8px 0;border-bottom:1px solid var(--line);font-size:15px}
+.brick-specs li::before{content:"\25A0";color:var(--accent);margin-right:10px;font-size:10px;vertical-align:2px}
 
 /* features */
 .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:2px;background:var(--line);border:2px solid var(--line)}
