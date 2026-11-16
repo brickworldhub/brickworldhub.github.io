@@ -9,8 +9,8 @@ Website for [brickworldhub.com](https://brickworldhub.com): free, open source mu
 Made by Alessandro Pietrosanti. Contact: info@brickworldhub.com · Instagram [@brickworld_hub](https://www.instagram.com/brickworld_hub/) · [Ko-fi](https://ko-fi.com/brickworld)
 
 ## Branches
-- `main` – what is live on brickworldhub.com (served by GitHub Pages)
-- `full-site` – the full website, ready for launch
+- `main` – the live website on brickworldhub.com (served by GitHub Pages)
+- `full-site` – working copy of the website, kept in step with `main`
 
 ## Licence
 GPL-3.0, see [LICENSE](LICENSE).
