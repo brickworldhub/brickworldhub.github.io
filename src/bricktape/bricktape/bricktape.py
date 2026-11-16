@@ -53,7 +53,7 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import pygame
 
 APP_NAME = "BRICKTAPE"
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 # 48 kHz on the Brick: the system mixer and the codec run at 48k, and the speaker and mic share one
 # clock, so asking the mic for 44.1k while playback runs at 48k can stall the capture.
 SR = 48000 if os.path.isdir("/userdata/roms") else 44100
@@ -2845,6 +2845,7 @@ class App:
             pygame.KSCAN_PERIOD: "r2", pygame.KSCAN_TAB: "select",
         }
         self.show_toast("Hold SELECT to see the controls" if ON_DEVICE else "Hold Tab to see the keyboard controls", 4)
+        self._t_started, self._audio_bad = time.time(), None
         if self.audio.error:
             self.show_toast("Audio: " + self.audio.error, 6)
 
@@ -4288,8 +4289,16 @@ class App:
             xr -= 11
         _ = tabs_end
         L.hline(0, 14, LCD_W)
+        # The output opens in the background while the app starts: only an error that lasts is shown, and
+        # never in the first seconds after start (it used to flash "AUDIO ERROR" at every start).
+        now = time.time()
         if self.engine.error or not self.audio.ok:
-            self.toast = ("AUDIO ERROR - SEE LOG.TXT", time.time() + 1)
+            if self._audio_bad is None:
+                self._audio_bad = now
+            if now - self._audio_bad > 4 and now - self._t_started > 10:
+                self.toast = ("AUDIO ERROR - SEE LOG.TXT", now + 1)
+        else:
+            self._audio_bad = None
 
     def draw_overlays(self):
         L = self.lcd
@@ -4972,6 +4981,7 @@ class App:
                 STARTED.set()
                 faulthandler.cancel_dump_traceback_later()
                 print("startup: first frame drawn", flush=True)
+                self._t_started = time.time()
             if self.engine.learned is not None:
                 num, key = self.engine.learned
                 self.engine.learned = None
