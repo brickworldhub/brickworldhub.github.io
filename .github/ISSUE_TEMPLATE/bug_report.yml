@@ -1,0 +1,59 @@
+name: Bug report
+description: Something doesn't work as it should in one of the BrickWorld apps.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this! The more you tell me, the faster I can fix it.
+  - type: dropdown
+    id: app
+    attributes:
+      label: App
+      options:
+        - BrickSampler
+        - BrickLooper
+        - BrickTape
+        - BrickFX
+        - BrickAmbientFX
+        - The website
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: You can see it in the zip name or on the SET page.
+      placeholder: "e.g. 1.1.0"
+    validations:
+      required: true
+  - type: input
+    id: knulli
+    attributes:
+      label: KNULLI version and device
+      placeholder: "e.g. KNULLI Scarab on a TrimUI Brick"
+  - type: input
+    id: usb
+    attributes:
+      label: What is plugged into the USB port?
+      placeholder: "e.g. M-Audio interface, Arturia MiniLab, nothing"
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How can I make it happen again?
+      placeholder: |
+        1. Open the app
+        2. Go to the ... page
+        3. Press ...
+  - type: textarea
+    id: log
+    attributes:
+      label: log.txt
+      description: Each app writes a log.txt in its folder (for example bricktape/log.txt). You can drag the file here or paste the end of it.
