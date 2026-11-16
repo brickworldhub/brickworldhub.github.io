@@ -53,7 +53,7 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import pygame
 
 APP_NAME = "BRICKTAPE"
-VERSION = "1.0.1"
+VERSION = "1.1.0"
 # 48 kHz on the Brick: the system mixer and the codec run at 48k, and the speaker and mic share one
 # clock, so asking the mic for 44.1k while playback runs at 48k can stall the capture.
 SR = 48000 if os.path.isdir("/userdata/roms") else 44100
@@ -3717,6 +3717,11 @@ class App:
         if btn == "x" and self.audition_note is not None:
             self.engine.note_off(self.audition_note)
             self.audition_note = None
+        if btn in ("l2", "r2") and PAGES[self.page] == "TAPE" and self.engine.has_tape:
+            want = TS_REW if btn == "l2" else TS_FF
+            if self.engine.tape["wstate"] == want:   # let go of L2 / R2: the tape stops right there
+                self.engine.tape_cmd(TC_STOP)
+                self.engine.tape["wstate"] = TS_STOP
         if btn == "select":
             # hold SELECT: controls help; tap on the TAPE page: arm / disarm the current track
             if (not self.select_combo and time.time() - t0 <= 0.45 and PAGES[self.page] == "TAPE"
@@ -3796,8 +3801,6 @@ class App:
             self.set_page(self.page - 1)
         elif btn == "r1" and not repeat:
             self.set_page(self.page + 1)
-        elif btn in ("l2", "r2") and not repeat:
-            self.set_page(self.page + (1 if btn == "r2" else -1))
         elif btn == "a":
             if p.kind == "file":
                 self.open_browser()
@@ -3813,13 +3816,14 @@ class App:
 
     # ---------- tape
     def tape_button(self, btn, repeat):
-        """All buttons on the TAPE page except START / SELECT / Y (see release_btn)."""
+        """All buttons on the TAPE page except START / SELECT / Y (see release_btn). L1 / R1 change page as
+        on every page; hold L2 / R2 to rewind / fast forward (it stops where you let go, see release_btn)."""
         if btn in ("start", "select", "y", "vol_up", "vol_down"):
             return False
         e, tp = self.engine, self.state.tape
-        if btn in ("l2", "r2"):
+        if btn in ("l1", "r1"):
             if not repeat:
-                self.set_page(self.page + (1 if btn == "r2" else -1))
+                self.set_page(self.page + (1 if btn == "r1" else -1))
             return True
         if btn in ("up", "down"):
             self.tape_track = (self.tape_track + (1 if btn == "down" else -1)) % TAPE_TRACKS
@@ -3867,10 +3871,11 @@ class App:
                     self.show_toast("RETURN TO ZERO", 1.2)
             else:
                 e.tape_cmd(TC_STOP)
-        elif btn == "l1":
-            e.tape_cmd(TC_REW)
-        elif btn == "r1":
-            e.tape_cmd(TC_FF)
+        elif btn in ("l2", "r2"):
+            want = TS_REW if btn == "l2" else TS_FF
+            if st["wstate"] != want:            # TC_REW / TC_FF toggle: only send when not already winding that way
+                e.tape_cmd(TC_REW if btn == "l2" else TC_FF)
+                st["wstate"] = want
         return True
 
     def toggle_arm(self, t):
@@ -4319,18 +4324,18 @@ class App:
         L.erase(0, 15, LCD_W, LCD_H - 15)
         if PAGES[self.page] == "TAPE" and self.last_input == "pad":
             title, rows = "TAPE", [("A", "PLAY (PUNCH OUT)"), ("X", "RECORD (PUNCH IN)"), ("B", "STOP / BACK TO ZERO"),
-                                   ("Y", "PAUSE"), ("L1 / R1", "REWIND / FAST FWD"), ("SELECT", "SAFE / REC / MUTE"),
+                                   ("Y", "PAUSE"), ("HOLD L2 / R2", "REWIND / FAST FWD"), ("SELECT", "SAFE / REC / MUTE"),
                                    ("UP / DOWN", "TRACK"), ("LEFT / RIGHT", "TRACK VOLUME"), ("Y + X", "UNDO / REDO TAKE"),
-                                   ("Y + B", "CLEAR TRACK"), ("L2 / R2", "PAGE"), ("SELECT+START", "SAVE AND QUIT")]
+                                   ("Y + B", "CLEAR TRACK"), ("L1 / R1", "PAGE"), ("SELECT+START", "SAVE AND QUIT")]
         elif PAGES[self.page] == "TAPE":
             title, rows = "TAPE KEYS", [("Z / ENTER", "PLAY (PUNCH OUT)"), ("SPACE", "RECORD (PUNCH IN)"),
-                                        ("X / ESC", "STOP / BACK TO ZERO"), ("SHIFT", "PAUSE"), ("[ ]", "REWIND / FAST FWD"),
+                                        ("X / ESC", "STOP / BACK TO ZERO"), ("SHIFT", "PAUSE"), ("HOLD , .", "REWIND / FAST FWD"),
                                         ("TAB", "SAFE / REC / MUTE"), ("UP / DOWN", "TRACK"), ("LEFT / RIGHT", "TRACK VOLUME"),
-                                        ("SHIFT+SPACE", "UNDO / REDO TAKE"), ("SHIFT+X", "CLEAR TRACK"), (", .", "PAGE"),
+                                        ("SHIFT+SPACE", "UNDO / REDO TAKE"), ("SHIFT+X", "CLEAR TRACK"), ("[ ]", "PAGE"),
                                         ("CTRL+S / Q", "SAVE / QUIT")]
         elif self.last_input == "pad":
             title, rows = "CONTROLS", [("UP / DOWN", "SELECT"), ("LEFT / RIGHT", "CHANGE VALUE"), ("HOLD Y", "FINE ADJUST"),
-                                        ("A", "SWITCH / OPEN"), ("B", "BACK / MIDI LEARN"), ("L1/R1 L2/R2", "PAGE"),
+                                        ("A", "SWITCH / OPEN"), ("B", "BACK / MIDI LEARN"), ("L1 / R1", "PAGE"),
                                         ("VOLUME +/-", "OUTPUT LEVEL"), ("START", "SAVE"), ("SELECT+START", "SAVE AND QUIT")]
         else:
             title, rows = "KEYBOARD", [("UP / DOWN", "SELECT"), ("LEFT / RIGHT", "VALUE (SHIFT FINE)"),

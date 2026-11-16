@@ -1,4 +1,4 @@
-# BrickTape 1.0.1
+# BrickTape 1.1.0
 
 A 4-track tape recorder for the TrimUI Brick (KNULLI), in the spirit of the 80s cassette 4-track recorders. Built on BrickLooper 1.4.0: same USB input (with clock drift correction), latency compensation, FX and display. Python, Pygame and NumPy, with the audio engine in C (`native/btdsp.c`).
 
@@ -12,10 +12,10 @@ Four mono tracks on one tape, 10 minutes long (the whole project, all in RAM). T
 - **X** starts recording on the armed tracks. From play it punches in where you are. **A** while recording punches out and keeps playing. Punch in and out crossfade over 5 ms (no clicks).
 - **Y** pauses (PLAY or REC). Y again goes on from the same point.
 - **B** stops. B again at stop goes back to zero.
-- **L1 / R1** rewind / fast forward (30x), and you hear the tracks wind past (SET > Wind sound to switch it off). Press again or B to stop.
+- **Hold L2 / R2** to rewind / fast forward: it starts slow and speeds up to 30x, you hear the tracks wind past (SET > Wind sound to switch it off), and it stops where you let go.
 - **Y + X** undoes the last take (all the tracks it recorded), and again redoes it.
 - **Y + B** clears the current track (asks first).
-- **Up / Down** choose the track, **Left / Right** its volume. **L2 / R2** change page.
+- **Up / Down** choose the track, **Left / Right** its volume. **L1 / R1** change page, the same on every page.
 
 | Action | Brick | Keyboard |
 |---|---|---|
@@ -23,12 +23,12 @@ Four mono tracks on one tape, 10 minutes long (the whole project, all in RAM). T
 | Record / punch in | X | Space |
 | Stop / back to zero | B | X or Esc |
 | Pause | Y | Shift |
-| Rewind / fast forward | L1 / R1 | [ / ] |
+| Rewind / fast forward (hold) | L2 / R2 | , / . |
 | Safe / rec / mute | SELECT | Tab |
 | Undo / redo last take | Y + X | Shift + Space |
 | Clear track | Y + B | Shift + X |
 | Track / volume | D-pad | arrows |
-| Page | L2 / R2 | , / . |
+| Page | L1 / R1 | [ / ] |
 
 ## MIX
 
@@ -56,6 +56,7 @@ Rebuild the library with `native/build.sh` (zig).
 
 ## Version history
 
+- **1.1.0** – L1 / R1 change page on every page (also on TAPE). Rewind / fast forward move to L2 / R2: hold to wind (starts slow, speeds up), with the wind sound, and the tape stops where you let go.
 - **1.0.1** – no more "AUDIO ERROR" message for a few seconds at every start (the sound card opens in the background while the app starts; the message now only shows if a problem lasts).
 - **1.0.0** – first stable version. USB audio interface and built-in mic tested on the Brick. SELECT steps SAFE / REC / MUTE, wind sound in rewind and fast forward, 10-minute tape for the whole project with reels that follow it.
 - 0.1.x – betas.

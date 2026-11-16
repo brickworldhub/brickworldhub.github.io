@@ -1,4 +1,4 @@
-BrickTape 1.0.1 - a 4-track tape recorder for the TrimUI Brick (KNULLI)
+BrickTape 1.1.0 - a 4-track tape recorder for the TrimUI Brick (KNULLI)
 https://brickworldhub.com
 
 1. Copy BrickTape.sh, the .keys files and the bricktape folder to roms/ports
