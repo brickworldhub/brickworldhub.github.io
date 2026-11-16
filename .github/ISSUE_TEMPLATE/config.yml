@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions, ideas and things you made
+    url: https://github.com/brickworldhub/brickworldhub.github.io/discussions
+    about: Ask a question, share an idea or show what you made with the apps.
+  - name: No GitHub account? Send an email
+    url: mailto:info@brickworldhub.com
+    about: Write to info@brickworldhub.com
