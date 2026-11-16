@@ -474,6 +474,7 @@ typedef struct {
     long long G, P, maxt, ncell, click_p;
     int ts, tpaused, wts, wpaused, recm, engaged, take_no, undo_take, undo_st, click_on;
     float tg, sg, sz[2];            /* tape gain, scrub gain and its low-pass state */
+    double wsp;                     /* winding speed now: starts slow, speeds up to TP_WIND while it winds */
     float tp[TP_COUNT];
     float *inL, *inR, *pL, *pR;
     float in_pk[2];
@@ -949,8 +950,8 @@ static int tape_process(Eng *g, int n) {
         float s1 = stgt > s0 ? fminf(1.0f, s0 + 0.1f) : fmaxf(0.0f, s0 - 0.25f);
         g->sg = s1;
         if ((s0 > 0.0f || s1 > 0.0f) && (g->ts == TS_FF || g->ts == TS_REW)) {
-            double sp = g->tp[TP_WIND] < 1.0f ? 1.0 : g->tp[TP_WIND];
-            int dir = g->ts == TS_FF ? 1 : -1, w = (int)sp;
+            double sp = winding ? g->wsp : 0.0;        /* fading out: the tape has already stopped */
+            int dir = g->ts == TS_FF ? 1 : -1, w = (int)(g->wsp < 1.0 ? 1.0 : g->wsp);
             float tl[NTT], tr_[NTT];
             for (int i = 0; i < NTT; i++) {
                 float vol = g->tp[TP_MUTE + i] > 0.5f ? 0.0f : g->tp[TP_VOL + i];
@@ -982,9 +983,12 @@ static int tape_process(Eng *g, int n) {
             active = 1;
         } else if (s1 <= 0.0f) { g->sz[0] = g->sz[1] = 0; }
     }
-    if (!moving && (g->ts == TS_FF || g->ts == TS_REW) && !g->tpaused) {
-        long long step = (long long)(g->tp[TP_WIND] * n);
-        if (step < n) step = n;
+    /* the tape winds only while nothing else is waiting: it stops at once when the button is let go */
+    if (winding) {
+        double top = g->tp[TP_WIND] < 2.0f ? 2.0 : g->tp[TP_WIND];
+        if (g->wsp < 2.0) g->wsp = 2.0;
+        g->wsp = g->wsp * 1.0045 > top ? top : g->wsp * 1.0045;   /* 2x to 30x in about 1.6 s */
+        long long step = (long long)(g->wsp * n);
         if (g->ts == TS_FF) {
             g->P += step;
             if (g->P >= g->maxt) { g->P = g->maxt; g->wts = TS_STOP; }
@@ -993,6 +997,8 @@ static int tape_process(Eng *g, int n) {
             if (g->P <= 0) { g->P = 0; g->wts = TS_STOP; }
         }
         active = 1;
+    } else if (g->ts != TS_FF && g->ts != TS_REW) {
+        g->wsp = 0;                 /* next wind starts slow again */
     }
     /* input monitor */
     float pk2[2] = {0, 0}, mon = g->tp[TP_MON] > 0.5f ? gin : 0.0f;
