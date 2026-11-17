@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BrickCompanion – a sound source for your analog synth, on the TrimUI Brick (coming soon) | BrickWorld</title>
+<meta name="description" content="BrickCompanion is a free app for the TrimUI Brick that works next to a mono analog synth: a sub oscillator into the external audio input, or an audio-rate modulator into the mod input. With or without MIDI. Coming soon.">
+<meta property="og:title" content="BrickCompanion (coming soon)">
+<meta property="og:description" content="A sound source for your analog synth, on the TrimUI Brick.">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://brickworldhub.com/companion.html">
+<meta property="og:url" content="https://brickworldhub.com/companion.html">
+<meta property="og:image" content="https://brickworldhub.com/brickcompanion.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#120800">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Doto:wght@800;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@type": "SoftwareApplication",
+ "name": "BrickCompanion",
+ "description": "A companion app for mono analog synths on the TrimUI Brick: a sub oscillator or an audio-rate modulator, patched into the synth. Coming soon.",
+ "applicationCategory": "MultimediaApplication",
+ "operatingSystem": "KNULLI (TrimUI Brick)",
+ "url": "https://brickworldhub.com/companion.html",
+ "image": "https://brickworldhub.com/brickcompanion.jpg",
+ "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+ "isAccessibleForFree": true,
+ "author": {"@type": "Person", "name": "Alessandro Pietrosanti"},
+ "isPartOf": {"@type": "WebSite", "name": "BrickWorld", "url": "https://brickworldhub.com/"}
+}
+</script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="index.html">BRICKWORLD</a>
+    <nav aria-label="Main">
+      <a href="sampler.html">BrickSampler</a>
+      <a href="looper.html">BrickLooper</a>
+      <a href="tape.html">BrickTape</a>
+      <a href="fx.html">BrickFX</a>
+      <a href="ambientfx.html">BrickAmbientFX</a>
+      <a href="companion.html" aria-current="page">BrickCompanion</a>
+      <a href="index.html#about">About</a>
+    </nav>
+  </div>
+</header>
+<div class="subnav">
+  <div class="wrap">
+    <span class="name">BRICKCOMPANION</span>
+    <nav aria-label="On this page">
+      <a href="#how">How it works</a>
+      <a href="#modes">What it does</a>
+      <a href="#roadmap">Next</a>
+    </nav>
+  </div>
+</div>
+
+<main>
+  <section id="top" class="wrap hero">
+    <div class="hero-copy">
+      <p class="kicker">For mono analog synths · TrimUI Brick · KNULLI · Coming soon</p>
+      <h1>Patch it<br>into your<br>synth.</h1>
+      <p style="max-width:34em">BrickCompanion doesn't play on its own. It works next to your analog synth. The Brick makes one extra sound and you send it with a cable into the synth: into the external audio input as a sub oscillator, or into the mod input to make metallic, FM-like tones. Your synth's filter and envelopes do the rest.</p>
+      <p style="max-width:34em">I'm testing it now on my own synth. It's not ready to download yet: follow <a href="https://www.instagram.com/brickworld_hub/" rel="noopener" target="_blank">@brickworld_hub</a> on Instagram to know when it's out.</p>
+      <div class="ctas">
+        <span class="btn primary" aria-disabled="true">Coming soon</span>
+        <a class="btn" href="https://www.instagram.com/brickworld_hub/" rel="noopener" target="_blank">Follow on Instagram</a>
+      </div>
+      <p class="small">It will be free and open source (GPL-3.0), like the other apps.</p>
+    </div>
+    <div>
+      <img class="hero-img" src="brickcompanion.jpg" width="1000" height="1250" alt="TrimUI Brick running BrickCompanion, sitting on an analog synth and patched into it with a cable">
+    </div>
+  </section>
+
+  <section id="how" class="band alt">
+    <div class="wrap section">
+      <h2>HOW IT WORKS</h2>
+      <ol class="steps">
+        <li><span class="dot">01</span><span>Run a <b>mono 3.5 mm cable</b> from the Brick's headphone jack to your synth's <b>external audio input</b> or <b>mod input</b>.</span></li>
+        <li><span class="dot">02</span><span>Pick what the Brick sends: a <b>sub oscillator</b> under your notes, or a <b>modulator</b> at audio rate.</span></li>
+        <li><span class="dot">03</span><span>Play. With MIDI it follows your keyboard. Without MIDI it plays a fixed note, a drone, or the notes you play on the Brick's buttons.</span></li>
+      </ol>
+      <p class="note lcd">One voice, one signal, one cable. Mono only, on purpose: a mono cable uses just the left channel, so that's where the sound goes.</p>
+    </div>
+  </section>
+
+  <section id="modes" class="band">
+    <div class="wrap section">
+      <h2>WHAT IT DOES</h2>
+      <div class="features">
+        <div class="feature"><h3>SUB OSCILLATOR</h3><p>One or two octaves under your note, or the same octave and one up. Sine, triangle, saw, square or pulse with width. Into the external input it goes through your synth's own filter and VCA.</p></div>
+        <div class="feature"><h3>MODULATOR</h3><p>Into the mod input: a wave that follows your note at a ratio (1:4 up to 7:1), or a fixed frequency from 20 to 2000 Hz. Bells, metal, growls.</p></div>
+        <div class="feature"><h3>WORKS WITHOUT MIDI</h3><p>MIDI makes it follow your keyboard, but you don't need it. Fixed note for drones, or play eight scale notes on the Brick's buttons.</p></div>
+        <div class="feature"><h3>OSCILLOSCOPE</h3><p>See the exact wave leaving the Brick, live, on the dot-matrix screen. It stands still on a held note.</p></div>
+        <div class="feature"><h3>TUNING</h3><p>An A-440 reference tone, master tune, fine tune and glide, so it sits right with your synth.</p></div>
+        <div class="feature"><h3>SAME FAMILY</h3><p>Same screen, same buttons and same C audio engine as the other BrickWorld apps.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="roadmap" class="band alt">
+    <div class="wrap section">
+      <h2>NEXT UP</h2>
+      <ul class="list roadmap">
+        <li><span>Sub oscillator, modulator, play mode, oscilloscope, MIDI in</span><span class="tag">Testing</span></li>
+        <li><span>Noise and textures: white, pink, brown, tape hiss, crackle, your own WAVs</span><span class="tag">Later</span></li>
+        <li><span>Waves your synth doesn't have: wavetables, digital FM, vowels</span><span class="tag">Later</span></li>
+        <li><span>A simple 16-step pattern, with accent and slide</span><span class="tag">Idea</span></li>
+      </ul>
+    </div>
+  </section>
+  <section id="feedback" class="band">
+    <div class="wrap section">
+      <h2>HAVE AN IDEA?</h2>
+      <p style="max-width:40em">Got an idea for BrickCompanion, or a synth you want it to work with? Tell me.</p>
+      <div class="ctas">
+        <a class="btn primary" href="https://github.com/brickworldhub/brickworldhub.github.io/discussions/new?category=ideas" rel="noopener" target="_blank">Share an idea</a>
+      </div>
+      <p class="small">It goes to GitHub. No GitHub account? Email me at <a href="mailto:info@brickworldhub.com?subject=BrickCompanion%20feedback">info@brickworldhub.com</a>.</p>
+    </div>
+  </section>
+
+  <section id="get-a-brick" class="band alt">
+    <div class="wrap section">
+      <div class="brick-box">
+        <img src="trimui-brick-colours.jpg" width="1200" height="900" alt="Four TrimUI Brick consoles in purple, white, red and black on a dark grey surface" loading="lazy">
+        <div class="brick-copy">
+          <h2>NO BRICK YET?</h2>
+          <p>BrickCompanion will run on the TrimUI Brick, a small handheld console, with <a href="https://knulli.org/" rel="noopener" target="_blank">KNULLI</a> on its SD card. KNULLI is free: download it and follow the install guide at knulli.org. The app will be free: the Brick is the only thing you need to buy.</p>
+          <ul class="brick-specs">
+            <li>3.2" screen, 1024 × 768</li>
+            <li>USB-C for audio interfaces, USB synths and MIDI keyboards</li>
+            <li>Headphone jack out</li>
+            <li>3000 mAh battery, 159 g</li>
+            <li>White, black, red or purple</li>
+          </ul>
+          <div class="ctas">
+            <a class="btn primary" href="https://s.click.aliexpress.com/e/_c4ahArVf" rel="sponsored nofollow noopener" target="_blank">Buy a TrimUI Brick on AliExpress</a>
+          </div>
+          <p class="small">Check today's price on AliExpress. This is an affiliate link: if you buy through it, I get a small commission and you pay the same price. It helps me keep the apps free.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer band">
+  <div class="wrap">
+    <a class="logo dot" href="index.html">BRICKWORLD</a>
+    <span>Made by Alessandro Pietrosanti · <a href="mailto:info@brickworldhub.com">info@brickworldhub.com</a> · <a href="https://www.instagram.com/brickworld_hub/" rel="me noopener" target="_blank">Instagram</a> · <a href="https://ko-fi.com/brickworld" rel="noopener" target="_blank">Support on Ko-fi</a></span>
+    <p class="legal">Free and open source under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" rel="noopener" target="_blank">GPL-3.0</a> licence. TrimUI and Brick are trademarks of their owners. BrickWorld is not affiliated with TrimUI. <a href="privacy.html">Privacy</a> · <a href="#" data-cookie-settings>Cookie settings</a></p>
+  </div>
+</footer>
+
+<script src="consent.js"></script>
+</body>
+</html>
