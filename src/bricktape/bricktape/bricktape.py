@@ -53,7 +53,7 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import pygame
 
 APP_NAME = "BRICKTAPE"
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 # 48 kHz on the Brick: the system mixer and the codec run at 48k, and the speaker and mic share one
 # clock, so asking the mic for 44.1k while playback runs at 48k can stall the capture.
 SR = 48000 if os.path.isdir("/userdata/roms") else 44100
@@ -1237,6 +1237,7 @@ class NativeEngine:
         self.has_capture = self.has_tape and hasattr(lib, "eng_cap_open")
         self.comp = (0, 0)                  # (engine, input) delay compensation in frames, set by the app
         self.sent_tape = None
+        self.in_mute = False                # True for a moment while the input device changes (faded in C)
         self.tstat = np.zeros(24 + 8 * TAPE_TRACKS, np.float64)
         self.tape = dict(pos=0, state=0, paused=0, rec=0, wstate=0, wpaused=0, maxt=1, in_peak=[0.0, 0.0],
                          cap_open=False, cap_period=0, ring_target=0, in_under=0, mic_on=False, cap_reads=0,
@@ -1260,7 +1261,8 @@ class NativeEngine:
     # ---- tape
     def push_tape(self):
         tp, st = self.state.tape, self.state
-        t = [float(self.comp[0]), float(self.comp[1]), float(tp["mon"]), float(st.rec["gain"]), float(OUTPUT_VOLUME),
+        gain = 0.0 if self.in_mute else float(st.rec["gain"])
+        t = [float(self.comp[0]), float(self.comp[1]), float(tp["mon"]), gain, float(OUTPUT_VOLUME),
              float(tp["met"]), float(tp["bpm"]), float(SIG_BEATS[tp["sig"]]), tp["click"] / 100.0, float(TAPE_WIND)]
         t += [1.0 if a else 0.0 for a in tp["arm"]] + [float(v) for v in tp["inp"]] + [float(v) for v in tp["vols"]]
         t += [float(v) for v in tp["pans"]] + [1.0 if m else 0.0 for m in tp["mutes"]] + [float(tp["scrub"])]
@@ -1835,6 +1837,60 @@ def capture_cards():
             continue                                  # playback only
         name = desc.split(" - ", 1)[1] if " - " in desc else desc
         out.append((cid, " ".join(name.split()) or cid))
+    return out
+
+
+def capture_devices(n):
+    """Recording devices (ALSA device numbers) of card n, from /proc/asound/cardN/pcmXc. A USB adapter with
+    a mic in and a line in has two. [0] if none can be read (desktop, or /proc not there)."""
+    base = os.path.join(os.path.dirname(ASOUND_CARDS), f"card{n}")
+    devs = []
+    for d in glob.glob(os.path.join(base, "pcm*c")):
+        m = re.match(r"pcm(\d+)c$", os.path.basename(d))
+        if m:
+            devs.append(int(m.group(1)))
+    return sorted(devs) or [0]
+
+
+def capture_stream_info(n, dev):
+    """(formats, channels, rates) the device says it can record, from /proc/asound/cardN/streamX
+    (USB audio: stream X is device X). Empty lists if it can't be read."""
+    fmts, chans, rates = [], [], []
+    try:
+        with open(os.path.join(os.path.dirname(ASOUND_CARDS), f"card{n}", f"stream{dev}")) as f:
+            txt = f.read()
+    except OSError:
+        return fmts, chans, rates
+    cap = txt.split("Capture:", 1)[1] if "Capture:" in txt else ""
+    cap = cap.split("Playback:", 1)[0]
+    for ln in cap.splitlines():
+        ln = ln.strip()
+        if ln.startswith("Format:"):
+            fmts += [x.strip() for x in ln[7:].split(",") if x.strip() and x.strip() not in fmts]
+        elif ln.startswith("Channels:"):
+            c = ln[9:].strip()
+            if c.isdigit() and int(c) not in chans:
+                chans.append(int(c))
+        elif ln.startswith("Rates:"):
+            for x in ln[6:].split(","):
+                x = x.strip()
+                if x.isdigit() and int(x) not in rates:
+                    rates.append(int(x))
+    return fmts, chans, rates
+
+
+def capture_hw_params(n, dev):
+    """What the card really runs at while it is open: /proc/asound/cardN/pcmXc/sub0/hw_params."""
+    try:
+        with open(os.path.join(os.path.dirname(ASOUND_CARDS), f"card{n}", f"pcm{dev}c", "sub0", "hw_params")) as f:
+            txt = f.read()
+    except OSError:
+        return {}
+    out = {}
+    for ln in txt.splitlines():
+        if ":" in ln:
+            k, v = ln.split(":", 1)
+            out[k.strip()] = v.strip()
     return out
 
 
@@ -2415,6 +2471,7 @@ P_SCRUB = Param("scrub", "Wind sound", "enum", opts=OFFON, scope="tape")
 MIX_PARAMS = [[Param(f"tin{i}", "Input", "tin"), Param(f"tvol{i}", "Volume", "tvol"),
                Param(f"tpan{i}", "Pan", "tpan"), Param(f"tmute{i}", "Mute", "tmute")] for i in range(TAPE_TRACKS)]
 P_SOURCE = Param("rec_source", "Source", "source", scope="ui")
+P_USBIN = Param("rec_dev", "USB input", "usbin", scope="ui")
 P_CHANNEL = Param("rec_channel", "Channel", "enum", opts=REC_CHANNELS, scope="ui")
 REC_PARAMS = [P_RECORD, P_SOURCE, P_CHANNEL,
               Param("gain", "Input gain", "lin", 0, 4, 0.05, f_gain, scope="rec"),
@@ -2910,7 +2967,7 @@ class App:
     # ---------- settings (app-wide, not per project)
     def load_settings(self):
         self.ui = dict(display=0, project="DEFAULT", latency=0, ccmap=dict(DEFAULT_CCMAP),
-                       rec_source="internal", rec_channel=2, volume=1.0, loop_offset=0)
+                       rec_source="internal", rec_channel=2, volume=1.0, loop_offset=0, rec_dev={})
         try:
             with open(SETTINGS_FILE) as f:
                 d = json.load(f)
@@ -2925,6 +2982,8 @@ class App:
         OUTPUT_VOLUME = self.ui["volume"] ** 2
         self.ui["rec_source"] = str(self.ui["rec_source"]) or "internal"
         self.ui["rec_channel"] = 2           # the tape always opens the input in stereo: each track picks L, R or L+R
+        rd = self.ui.get("rec_dev") if isinstance(self.ui.get("rec_dev"), dict) else {}
+        self.ui["rec_dev"] = {str(k): int(v) for k, v in rd.items() if str(v).lstrip("-").isdigit()}   # card id -> device
         self.ui["loop_offset"] = int(clamp(int(self.ui["loop_offset"]), -100, 200))
         cm = self.ui["ccmap"] if isinstance(self.ui["ccmap"], dict) else {}
         self.ui["ccmap"] = {str(int(c)): k for c, k in cm.items()
@@ -3596,6 +3655,11 @@ class App:
             return "Press A"
         if p.kind == "source":
             return self.source_label(self.ui["rec_source"])
+        if p.kind == "usbin":
+            if self.ui["rec_source"] == "internal":
+                return "-"
+            devs, i = self.usb_inputs()
+            return f"Input {i + 1}" + ("" if len(devs) > 1 else " (only)")
         if p.scope == "ui":
             if p.key == "latency":
                 idx = int(self.ui["latency"])
@@ -3631,6 +3695,15 @@ class App:
             self.cycle_sample(direction)
             return
         if p.kind == "action":
+            return
+        if p.kind == "usbin":
+            src = self.ui["rec_source"]
+            if src == "internal":
+                return
+            devs, i = self.usb_inputs()
+            j = clamp(i + direction, 0, len(devs) - 1)
+            if j != i:
+                self.ui["rec_dev"][src] = devs[j]
             return
         if p.kind == "source":
             ids = ["internal"] + [c for c, _ in capture_cards()]
@@ -3791,9 +3864,12 @@ class App:
                 self.save_settings()
             elif p.key == "loop_offset":
                 self.save_settings()
+            elif p.key == "rec_dev":
+                self.switch_input()
+                self.save_settings()
             elif p.key in ("rec_source", "rec_channel") and not self.recorder.recording:
                 self.recorder.set_source(self.ui["rec_source"], self.ui["rec_channel"])
-                self.update_capture()
+                self.switch_input()
                 self.save_settings()
                 if self.recorder.usb and self.recorder.dev is None:
                     self.recorder.open_async()
@@ -3926,9 +4002,22 @@ class App:
                 e.set_capture("", 0)
                 print(f"tape: input {src} is not plugged in (waiting for it)", flush=True)
                 return
-            devs = [f"plughw:CARD={src},DEV=0", f"hw:CARD={src},DEV=0", f"plughw:{n},0", f"hw:{n},0"]
+            have = capture_devices(n)
+            want = self.ui["rec_dev"].get(src)
+            d = want if want in have else (0 if 0 in have else have[0])
+            if want is not None and want not in have:
+                print(f"tape: input {src} has no recording device {want} now (has {have}): using device {d}", flush=True)
+            idx = have.index(d)
+            fmts, chans, rates = capture_stream_info(n, d)
+            # the engine runs at SR; plughw converts if the device can't do it (48000 is used when it can)
+            rate_note = (f"{SR} Hz" if (not rates or SR in rates)
+                         else f"device rates {rates}: ALSA converts {rates[0] if rates else '?'} -> {SR} Hz")
+            devs = [f"plughw:CARD={src},DEV={d}", f"hw:CARD={src},DEV={d}", f"plughw:{n},{d}", f"hw:{n},{d}"]
             e.set_capture("\n".join(devs), 2)
-            print(f"tape: input {src} (card {n}), stereo", flush=True)
+            self.cap_info = dict(card=n, cid=src, dev=d, idx=idx, count=len(have))
+            self._hw_logged = False
+            print(f"tape: input {src} (card {n}) device {d} = Input {idx + 1} of {len(have)}, stereo, {rate_note}"
+                  f" [formats {fmts or '?'}, channels {chans or '?'}, rates {rates or '?'}]", flush=True)
         else:
             e.set_capture("", 0)
             on = src == "internal" and ON_DEVICE
@@ -3936,6 +4025,51 @@ class App:
             if on:
                 threading.Thread(target=Recorder.configure_builtin_mic, daemon=True).start()
             print("tape: input built-in mic (the speaker goes quiet while it records)", flush=True)
+
+    def usb_inputs(self):
+        """([device numbers], index of the chosen one) for the USB card in Source."""
+        src = self.ui["rec_source"]
+        n = card_index(src) if use_alsa_tools() else None
+        devs = capture_devices(n) if n is not None else [0]
+        want = self.ui["rec_dev"].get(src, 0)
+        return devs, (devs.index(want) if want in devs else (devs.index(0) if 0 in devs else 0))
+
+    def switch_input(self):
+        """Change the input with a short fade: mute the input (the engine fades it in about 30 ms), reopen,
+        and fade it back in once the new device delivers sound."""
+        e = self.engine
+        if not getattr(e, "has_capture", False):
+            self.update_capture()
+            return
+        e.in_mute = True
+        e.sync()
+        self._switch = (time.time() + 0.06, "open")
+
+    def tick_switch(self):
+        sw = getattr(self, "_switch", None)
+        if sw is None or time.time() < sw[0]:
+            return
+        e = self.engine
+        if sw[1] == "open":
+            self.update_capture()
+            self._switch = (time.time() + 0.15, "wait", time.time() + 2.5)
+        elif sw[1] == "wait":
+            if self.ui["rec_source"] == "internal" or e.tape.get("cap_open") or time.time() > sw[2]:
+                e.in_mute = False
+                self._switch = None
+
+    def log_capture_open(self):
+        """Once the USB input is open: card, device, format, channels, rate, period and buffer in log.txt."""
+        info = getattr(self, "cap_info", None)
+        if info is None or getattr(self, "_hw_logged", True) or not self.engine.tape.get("cap_open"):
+            return
+        self._hw_logged = True
+        hw = capture_hw_params(info["card"], info["dev"])
+        tp = self.engine.tape
+        print(f"tape: capture open: card {info['card']} ({info['cid']}) device {info['dev']} (Input {info['idx'] + 1}),"
+              f" format {hw.get('format', '?')}, channels {hw.get('channels', tp.get('cap_ch', '?'))},"
+              f" rate {hw.get('rate', '?')}, period {hw.get('period_size', tp.get('cap_period', '?'))},"
+              f" buffer {hw.get('buffer_size', '?')}", flush=True)
 
     def watch_input(self):
         """Every 2 s: open the USB input when it gets plugged in. Every 10 s: a status line in log.txt."""
@@ -3950,6 +4084,7 @@ class App:
             present = card_index(src) is not None
             if present != getattr(self, "cap_present", None):
                 self.update_capture()
+            self.log_capture_open()
         if now >= getattr(self, "_log_t", 0):
             self._log_t = now + 10.0
             lp = e.tape
@@ -4234,7 +4369,7 @@ class App:
             pad = [P_PAD] if self.state.mode == "kit" else []
             return [[("RECORD", pad + REC_PARAMS)], []]
         return [[("DISPLAY", [P_DISPLAY]), ("AUDIO", [P_LATENCY, P_CLICKVOL, P_SCRUB]),
-                 ("INPUT", [P_SOURCE, P_INGAIN, P_MONITOR, P_OFFSET])],
+                 ("INPUT", [P_SOURCE, P_USBIN, P_INGAIN, P_MONITOR, P_OFFSET])],
                 [("METRONOME", METRO_PARAMS), ("PROJECT", PROJECT_PARAMS), ("MIDI CC", [P_CCMAP, P_CCRESET])]]
 
     def draw_sections(self, y0, row_h=13, title_h=12, gap=3, offset=0):
@@ -4593,7 +4728,13 @@ class App:
         L.text(61, y - 1, self.f_clock(tp["pos"]), scale=2)
         end = max(t["end"] for t in tp["tracks"])
         L.text(152, y - 1, "END " + (self.f_clock(end, tenths=False) if end else "-"))
-        src = "MIC" if self.ui["rec_source"] == "internal" else ("USB" if tp["cap_open"] else "NO USB")
+        if self.ui["rec_source"] == "internal":
+            src = "MIC"
+        elif tp["cap_open"]:
+            ci = getattr(self, "cap_info", None)
+            src = f"USB{ci['card']} IN{ci['idx'] + 1}" if ci else "USB"
+        else:
+            src = "NO USB"
         L.text(152, y + 7, src)
         mx = 152 + L.width(src) + 4
         for c, pk in enumerate(tp["in_peak"]):
@@ -4960,6 +5101,7 @@ class App:
                 self.watch_input()
                 if self.engine.has_tape:
                     self.check_tape_end()
+                self.tick_switch()
             lp = self.engine.last_pad
             if lp is not None:
                 self.engine.last_pad = None

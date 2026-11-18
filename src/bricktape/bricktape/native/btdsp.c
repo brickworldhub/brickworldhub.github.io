@@ -475,6 +475,7 @@ typedef struct {
     int ts, tpaused, wts, wpaused, recm, engaged, take_no, undo_take, undo_st, click_on;
     float tg, sg, sz[2];            /* tape gain, scrub gain and its low-pass state */
     double wsp;                     /* winding speed now: starts slow, speeds up to TP_WIND while it winds */
+    float gin_s;                    /* input gain as heard: follows TP_INGAIN smoothly (no clicks when it is muted to change input) */
     float tp[TP_COUNT];
     float *inL, *inR, *pL, *pR;
     float in_pk[2];
@@ -523,6 +524,7 @@ API Eng *eng_create(int sr, int block) {
         t->env = (unsigned char *)calloc((size_t)g->ncell, 1);
         t->rin = -1; t->take = -1; t->pg = 1;
         g->tp[TP_VOL + i] = 0.8f; g->tp[TP_IN + i] = 2;
+        g->gin_s = 1.0f;
     }
     g->undo_take = -1;
     g->inL = (float *)calloc(block, sizeof(float)); g->inR = (float *)calloc(block, sizeof(float));
@@ -867,7 +869,19 @@ static void tape_cmd(Eng *g, int cmd, int arg) {
  * g->L / g->R. Returns 1 when there is anything to hear. */
 static int tape_process(Eng *g, int n) {
     long long ci = tcomp_i(g), ce = tcomp_e(g);
-    float gin = g->tp[TP_INGAIN];
+    /* input gain, smoothed over about 30 ms and applied here once: the app mutes it (gain 0) while it
+     * changes the input device, so the change never clicks */
+    {
+        float g0 = g->gin_s, tg_ = g->tp[TP_INGAIN];
+        float stp = 0.1f * (tg_ > 1.0f ? tg_ : 1.0f);
+        float g1 = tg_ > g0 ? fminf(tg_, g0 + stp) : fmaxf(tg_, g0 - stp);
+        g->gin_s = g1;
+        for (int k = 0; k < n; k++) {
+            float gk = g0 + (g1 - g0) * (float)(k + 1) / (float)n;
+            g->inL[k] *= gk; g->inR[k] *= gk;
+        }
+    }
+    float gin = 1.0f;
     /* input level per source: L, R, L+R */
     float ipk[3] = {0, 0, 0};
     for (int k = 0; k < n; k++) {
