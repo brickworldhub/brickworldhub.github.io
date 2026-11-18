@@ -1,4 +1,4 @@
-# BrickSampler 2.0.0
+# BrickSampler 2.0.1
 
 A sampler for the TrimUI Brick running KNULLI. Play it from a USB MIDI keyboard, record from the built-in mic or any USB audio device, shape the sound with FX and build Wavestation-style wave sequences from your own samples.
 
@@ -24,7 +24,7 @@ Each mode keeps its own samples, so you can switch freely (SELECT).
 - **AMP** – attack, decay, sustain, release, velocity sensitivity.
 - **LFO** – one LFO for the whole project: wave (sine, triangle, saw, square, S&H), rate, delay (fade-in), mod wheel = depth; depth to pitch, volume, filter cutoff. Restarts on the first note after silence.
 - **FX** – drive, bitcrush, downsample, filter (LP/HP/BP with resonance), stereo delay (tone, ping-pong), reverb, master. A switches a section on/off. Switching makes no click: drive and filter fade over 10 ms, delay and reverb only close their input so the echoes and the tail ring out.
-- **REC** – records into the current slot or pad; takes are saved to `samples/recordings/`. SOURCE = Internal mic or USB (any USB audio device KNULLI sees: audio interface, USB mic, synth with USB audio; USB 1 / USB 2 when there are several); CHANNEL = input 1, 2 or both. With a USB source the speaker keeps playing while you record; with the internal mic the sound pauses while recording (the Brick can't do both).
+- **REC** – records into the current slot or pad; takes are saved to `samples/recordings/`. SOURCE = Internal mic or USB (any USB audio device KNULLI sees: audio interface, USB mic, synth with USB audio; USB 1 / USB 2 when there are several); USB INPUT = which input of the USB device (Input 1, Input 2...: some adapters have more than one, e.g. mic in and line in; fixed on Input 1 when there is only one); CHANNEL = left, right or both. With a USB source the speaker keeps playing while you record; with the internal mic the sound pauses while recording (the Brick can't do both).
 - **SET** – record rate/bits, display colour, latency (8/16/32 ms), MIDI CC map, projects, engine status.
 
 ## Controls

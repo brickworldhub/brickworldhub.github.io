@@ -54,7 +54,7 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import pygame
 
 APP_NAME = "BRICKSAMPLER"
-VERSION = "2.0.0"
+VERSION = "2.0.1"
 # 48 kHz on the Brick: the system mixer and the codec run at 48k, and the speaker and mic share one
 # clock, so asking the mic for 44.1k while playback runs at 48k can stall the capture.
 SR = 48000 if os.path.isdir("/userdata/roms") else 44100
@@ -1751,6 +1751,110 @@ def capture_cards():
     return out
 
 
+def card_number(cid):
+    """ALSA card number of a card id, or None when it isn't plugged in."""
+    try:
+        with open(ASOUND_CARDS) as f:
+            for ln in f:
+                m = re.match(r"\s*(\d+)\s+\[(\S+)\s*\]:", ln)
+                if m and m.group(2) == cid:
+                    return int(m.group(1))
+    except OSError:
+        pass
+    return None
+
+
+def capture_devices(cid):
+    """Capture device numbers of a card, sorted (a USB adapter can have more than one, e.g. mic in
+    and line in). Only devices that really exist (/proc/asound/cardN/pcmXc)."""
+    n = card_number(cid)
+    if n is None:
+        return []
+    base = os.path.join(os.path.dirname(ASOUND_CARDS), f"card{n}")
+    out = []
+    for d in glob.glob(os.path.join(base, "pcm*c")):
+        m = re.match(r"pcm(\d+)c$", os.path.basename(d))
+        if m:
+            out.append(int(m.group(1)))
+    return sorted(out)
+
+
+def capture_info(cid, dev):
+    """Formats, channel counts and rates of a USB capture device, from /proc/asound/cardN/streamX
+    (USB audio makes one stream file per PCM device). {} when unknown."""
+    n = card_number(cid)
+    if n is None:
+        return {}
+    try:
+        with open(os.path.join(os.path.dirname(ASOUND_CARDS), f"card{n}", f"stream{dev}")) as f:
+            text = f.read()
+    except OSError:
+        return {}
+    i = text.find("Capture:")
+    if i < 0:
+        return {}
+    block = text[i:]
+    j = block.find("Playback:")
+    if j > 0:
+        block = block[:j]
+    info = {"formats": [], "channels": [], "rates": [], "ranges": []}
+    for ln in block.splitlines():
+        ln = ln.strip()
+        if ln.startswith("Format:"):
+            for fm in ln.split(":", 1)[1].split():
+                if fm not in info["formats"]:
+                    info["formats"].append(fm)
+        elif ln.startswith("Channels:"):
+            try:
+                info["channels"].append(int(ln.split(":", 1)[1]))
+            except ValueError:
+                pass
+        elif ln.startswith("Rates:"):
+            v = ln.split(":", 1)[1]
+            rng = re.match(r"\s*(\d+)\s*-\s*(\d+)", v)
+            if rng:
+                info["ranges"].append((int(rng.group(1)), int(rng.group(2))))
+            else:
+                for r in re.findall(r"\d+", v):
+                    if int(r) not in info["rates"]:
+                        info["rates"].append(int(r))
+    return info
+
+
+def pick_rate(info):
+    """48000 if the device has it, otherwise the first rate it lists; SR when unknown."""
+    rates, ranges = info.get("rates", []), info.get("ranges", [])
+    if 48000 in rates or any(a <= 48000 <= b for a, b in ranges):
+        return 48000
+    if rates:
+        return rates[0]
+    if ranges:
+        return ranges[0][1]
+    return SR
+
+
+class Resampler:
+    """Linear rate conversion for a running stream (only used when the device can't do the app's rate)."""
+
+    def __init__(self, src, dst):
+        self.step = src / dst
+        self.pos = 0.0
+        self.prev = None
+
+    def __call__(self, x):
+        if not len(x):
+            return x
+        buf = x if self.prev is None else np.concatenate(([self.prev], x))
+        n = len(buf)
+        idx = np.arange(self.pos, n - 1, self.step)
+        self.prev = buf[-1]
+        if not len(idx):
+            self.pos -= n - 1
+            return np.zeros(0, np.float32)
+        self.pos = idx[-1] + self.step - (n - 1)
+        return np.interp(idx, np.arange(n), buf).astype(np.float32)
+
+
 class Recorder:
     def __init__(self, state):
         self.state = state
@@ -1768,22 +1872,37 @@ class Recorder:
         self.start_failed = False
         self.source = "internal"    # or the ALSA card id of a USB interface / mic / synth
         self.channel = 2            # USB: input 1, 2 or both mixed (index into REC_CHANNELS)
+        self.input_dev = 0          # USB: the card's capture device asked for (ALSA DEV number)
+        self.open_dev = None        # the device really opened (may fall back to the first one)
+        self.rate = SR
 
     @property
     def usb(self):
         return self.source != "internal"
 
-    def set_source(self, source, channel):
+    def set_source(self, source, channel, dev=0):
         """Switch input. A USB card stays open (live meter, speaker keeps playing); the internal mic
-        is only opened while recording, as before."""
+        is only opened while recording, as before. `dev` = which capture device of the USB card."""
         self.channel = channel
-        if source == self.source:
+        if source == self.source and (dev == self.input_dev or not self.usb):
+            self.input_dev = dev
             return
         proc, self.dev = self.dev, None
         if proc is not None and hasattr(proc, "terminate"):
             self._kill(proc)
-        self.source, self.half_duplex, self.error, self.level = source, False, None, 0.0
-        print(f"rec: source -> {source}", flush=True)
+        self.source, self.input_dev, self.half_duplex, self.error, self.level = source, dev, False, None, 0.0
+        self.open_dev = None
+        print(f"rec: source -> {source}" + (f", input device {dev}" if source != "internal" else ""), flush=True)
+
+    def usb_device(self):
+        """The capture device to open on the USB card: the saved one, or the first one if it's gone."""
+        devs = capture_devices(self.source)
+        if not devs:
+            return self.input_dev
+        if self.input_dev in devs:
+            return self.input_dev
+        print(f"rec: input device {self.input_dev} not on {self.source} (has {devs}), using {devs[0]}", flush=True)
+        return devs[0]
 
     def open_async(self):
         if self.starting:
@@ -1820,9 +1939,18 @@ class Recorder:
         # Never 'default' for capture on KNULLI: it goes through ALSA's dsnoop, which leaves a background
         # arecord holding the mic, and every later attempt then fails with "Device or resource busy".
         if self.usb:
-            # plughw converts rate and format, and turns a mono mic into 2 channels
-            d = f"CARD={self.source},DEV=0"
+            # plughw converts the format (e.g. S24_3LE) and turns a mono mic into 2 channels; the rate is one
+            # the device really has (48000 if it can), converted to the app's rate here if needed
+            dev = self.usb_device()
+            info = capture_info(self.source, dev)
+            self.open_dev, self.rate = dev, pick_rate(info)
+            if info:
+                print(f"rec: {self.source} device {dev} can do {' '.join(info['formats'])}, "
+                      f"{'/'.join(map(str, sorted(set(info['channels']))))} ch, rates "
+                      f"{info['rates'] or info['ranges']} -> opening at {self.rate}", flush=True)
+            d = f"CARD={self.source},DEV={dev}"
             return [(f"plughw:{d}", 2), (f"plughw:{d}", 1), (f"hw:{d}", 2)]
+        self.rate = SR
         c = [("hw:0,0", 1), ("plughw:0,0", 1), ("hw:0,0", 2)]
         if ALSA_CAPTURE not in ("default", "hw:0,0", "plughw:0,0"):
             c.insert(0, (ALSA_CAPTURE, 1))
@@ -1831,15 +1959,31 @@ class Recorder:
     def _try_arecord(self, dev, ch, wait=1.0):
         """Start arecord on one device. Returns the process if audio arrives within `wait` s, else None."""
         exe = shutil.which("arecord")
-        cmd = [exe, "-q", "-D", dev, "-t", "raw", "-f", "S16_LE", "-c", str(ch), "-r", str(SR)]
+        rate = self.rate
+        cmd = [exe, "-q", "-v", "-D", dev, "-t", "raw", "-f", "S16_LE", "-c", str(ch), "-r", str(rate)]
         print("mic:", " ".join(cmd), flush=True)
         try:
-            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, bufsize=0)
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
         except Exception as e:
             print("mic:", e, flush=True)
             return None
         got = threading.Event()
         frame = 2 * ch
+        conv = Resampler(rate, SR) if rate != SR else None
+        fade = [int(0.02 * SR)]          # short fade-in after (re)opening, so a new input never starts with a click
+        hw = {}
+
+        def params():
+            # arecord -v prints the ALSA setup; the last values are the real hardware ones
+            for raw in iter(proc.stderr.readline, b""):
+                ln = raw.decode("utf-8", "replace").strip()
+                m = re.match(r"(format|channels|rate|period_size|buffer_size)\s*:\s*(\S+)", ln)
+                if m:
+                    hw[m.group(1)] = m.group(2)
+                elif ln and "Recording" not in ln:
+                    if any(w in ln.lower() for w in ("error", "cannot", "unable", "busy", "invalid")):
+                        print("mic: arecord:", ln, flush=True)
+        threading.Thread(target=params, daemon=True).start()
 
         def reader():
             rest = b""
@@ -1855,6 +1999,16 @@ class Recorder:
                 if not got.is_set():
                     print(f"mic: audio arriving from {dev} ({ch} ch)", flush=True)
                     got.set()
+
+                    def summary():
+                        time.sleep(0.3)
+                        card = self.source if self.usb else "internal (card 0)"
+                        dn = self.open_dev if self.usb else dev
+                        print(f"rec: opened card {card}, device {dn} ({dev}): format {hw.get('format', '?')}, "
+                              f"{hw.get('channels', ch)} ch, {hw.get('rate', rate)} Hz, period "
+                              f"{hw.get('period_size', '?')}, buffer {hw.get('buffer_size', '?')} frames"
+                              + (f", converted to {SR} Hz" if conv else ""), flush=True)
+                    threading.Thread(target=summary, daemon=True).start()
                 data = rest + data
                 usable = len(data) - len(data) % frame
                 rest = data[usable:]
@@ -1864,6 +2018,15 @@ class Recorder:
                         x2 = x.reshape(-1, 2)
                         c = self.channel if self.usb else 2
                         x = x2[:, c] if c < 2 else x2.mean(axis=1)
+                    if conv:
+                        x = conv(x)
+                    if fade[0] > 0 and len(x):
+                        n0 = int(0.02 * SR)
+                        k = min(fade[0], len(x))
+                        start = n0 - fade[0]
+                        x = x.copy()
+                        x[:k] *= np.arange(start, start + k, dtype=np.float32) / n0
+                        fade[0] -= k
                     self._process(x)
 
         self.dev = proc
@@ -2323,8 +2486,9 @@ def cc_label(key):
 
 
 P_SOURCE = Param("rec_source", "Source", "source", scope="ui")
+P_INPUT = Param("rec_input", "USB input", "usbinput", scope="ui")
 P_CHANNEL = Param("rec_channel", "Channel", "enum", opts=REC_CHANNELS, scope="ui")
-REC_PARAMS = [P_RECORD, P_SOURCE, P_CHANNEL,
+REC_PARAMS = [P_RECORD, P_SOURCE, P_INPUT, P_CHANNEL,
               Param("gain", "Input gain", "lin", 0, 4, 0.05, f_gain, scope="rec"),
               Param("normalize", "Normalize", "enum", opts=OFFON, scope="rec")]
 
@@ -2711,8 +2875,17 @@ class App:
         self.splash("4/5  Starting MIDI")
         self.recorder = Recorder(self.state)
         self.recorder.out = self.audio
-        self.recorder.set_source(self.ui["rec_source"], self.ui["rec_channel"])
-        print("rec: extra input cards:", capture_cards() or "none", flush=True)
+        self.recorder.set_source(self.ui["rec_source"], self.ui["rec_channel"], self.ui["rec_input"])
+        cards = capture_cards()
+        print("rec: extra input cards:", cards or "none", flush=True)
+        for cid, _ in cards:
+            print(f"rec: {cid} capture devices: {capture_devices(cid)}", flush=True)
+        src = self.ui["rec_source"]
+        if src != "internal" and src in [c for c, _ in cards]:
+            devs = capture_devices(src)
+            if devs and self.ui["rec_input"] not in devs:
+                print(f"rec: saved input device {self.ui['rec_input']} is not on {src} any more, using "
+                      f"{devs[0]}", flush=True)
         self.midi = MidiIn(self.engine)
         self.midi.start()
         self.splash("5/5  Ready")
@@ -2810,7 +2983,7 @@ class App:
     # ---------- settings (app-wide, not per project)
     def load_settings(self):
         self.ui = dict(display=0, project="DEFAULT", latency=0, ccmap=dict(DEFAULT_CCMAP),
-                       rec_source="internal", rec_channel=2, volume=1.0)
+                       rec_source="internal", rec_channel=2, rec_input=0, volume=1.0)
         try:
             with open(SETTINGS_FILE) as f:
                 d = json.load(f)
@@ -2825,6 +2998,10 @@ class App:
         OUTPUT_VOLUME = self.ui["volume"] ** 2
         self.ui["rec_source"] = str(self.ui["rec_source"]) or "internal"
         self.ui["rec_channel"] = int(clamp(int(self.ui["rec_channel"]), 0, 2))
+        try:
+            self.ui["rec_input"] = max(0, int(self.ui["rec_input"]))
+        except (TypeError, ValueError):
+            self.ui["rec_input"] = 0
         cm = self.ui["ccmap"] if isinstance(self.ui["ccmap"], dict) else {}
         self.ui["ccmap"] = {str(int(c)): k for c, k in cm.items()
                             if str(c).isdigit() and 0 <= int(c) < 128 and k in CC_TARGETS}
@@ -3514,6 +3691,8 @@ class App:
             return "Press A"
         if p.kind == "source":
             return self.source_label(self.ui["rec_source"])
+        if p.kind == "usbinput":
+            return f"Input {self.input_number()}"
         if p.scope == "step":
             st = self.cur_step_dict()
             if st is None:
@@ -3600,7 +3779,19 @@ class App:
             ids = ["internal"] + [c for c, _ in capture_cards()]
             cur = self.ui["rec_source"]
             i = ids.index(cur) if cur in ids else 0
-            self.ui["rec_source"] = ids[clamp(i + direction, 0, len(ids) - 1)]
+            new = ids[clamp(i + direction, 0, len(ids) - 1)]
+            if new != cur:
+                self.ui["rec_source"] = new
+                devs = capture_devices(new) if new != "internal" else []
+                self.ui["rec_input"] = devs[0] if devs else 0
+            return
+        if p.kind == "usbinput":
+            src = self.ui["rec_source"]
+            devs = capture_devices(src) if src != "internal" else []
+            if len(devs) > 1:
+                cur = self.ui["rec_input"]
+                i = devs.index(cur) if cur in devs else 0
+                self.ui["rec_input"] = devs[clamp(i + direction, 0, len(devs) - 1)]
             return
         d = self.target(p)
         v = d[p.key]
@@ -3654,6 +3845,13 @@ class App:
                 self.engine.push_fx()
         self.save_settings()
         self.show_toast(f"VOLUME {round(v * 100)}%", 1.2)
+
+    def input_number(self):
+        """1-based number of the chosen capture device on the USB card ("Input 2"); 1 if it has only one."""
+        src = self.ui["rec_source"]
+        devs = capture_devices(src) if src != "internal" else []
+        cur = self.ui["rec_input"]
+        return devs.index(cur) + 1 if cur in devs else 1
 
     def source_label(self, cid):
         """On screen a USB source is just "USB" (numbered when there are several), whatever is plugged in:
@@ -3844,8 +4042,8 @@ class App:
                 if hasattr(self.audio, "set_latency"):
                     self.audio.set_latency(self.ui["latency"])
                 self.save_settings()
-            elif p.key in ("rec_source", "rec_channel") and not self.recorder.recording:
-                self.recorder.set_source(self.ui["rec_source"], self.ui["rec_channel"])
+            elif p.key in ("rec_source", "rec_channel", "rec_input") and not self.recorder.recording:
+                self.recorder.set_source(self.ui["rec_source"], self.ui["rec_channel"], self.ui["rec_input"])
                 self.save_settings()
                 if self.recorder.usb and self.recorder.dev is None:
                     self.recorder.open_async()
@@ -4648,7 +4846,7 @@ class App:
             L.text(25, y + 8, L.fit(status, 225))
         src = self.source_label(rec.source)
         if rec.usb:
-            src += " IN " + REC_CHANNELS[rec.channel]
+            src += f" IN {self.input_number()} CH " + REC_CHANNELS[rec.channel]
         L.text(25, y + 20, L.fit("FROM " + src, 150))
         L.rtext(251, y + 20, f"INTO {target}")
         # input level
@@ -4671,7 +4869,8 @@ class App:
                 vals = vals / max(1e-4, float(arr.max()))
             a = np.rint(np.minimum(vals, 1.0) * (wh // 2 - 1)).astype(int)
             L.columns(6, mid - a, mid + a)
-        self.draw_sections(y + bh + 5)
+        # kit mode has the PAD row too: tighter rows so all seven fit
+        self.draw_sections(y + bh + 5, row_h=11 if self.state.mode == "kit" else 13)
         nx = 131
         for i, line in enumerate(["TAKES ARE SAVED TO", "SAMPLES/RECORDINGS", "", "USB INTERFACES, MICS",
                                   "AND SYNTHS SHOW UP", "AS SOURCES"]):
