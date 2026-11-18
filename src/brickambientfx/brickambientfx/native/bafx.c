@@ -24,6 +24,7 @@
 #include <sched.h>
 #include <time.h>
 #include <unistd.h>
+#include <stdint.h>
 
 #define API __attribute__((visibility("default")))
 
@@ -160,11 +161,19 @@ typedef struct {
     pthread_t pth, cth;
     volatile int run, cap_run, play_open, cap_open, rt_play, rt_cap, want_frames, opened_frames;
     volatile int cap_change, cap_period, cap_channels, play_buffer, play_period, cap_rate, cap_buffer, cap_opens;
+    /* changing the USB input without clicks: fade the input out, switch, fade back in once the new one plays */
+    char cap_pend[512];
+    volatile int cap_req, cap_wait, cap_wait_opens;
+    float cfade, cfade_t;
+    /* capture format and rate chosen by the app from what the device supports (ALSA format codes) */
+    volatile int cap_fmt_req, cap_rate_req, pend_fmt, pend_rate, cap_fmt_open;
+    float cap_max[2];                       /* raw peak per channel since the device opened (0 = all zeros) */
+    double rbase;                           /* capture rate / engine rate: the resampler also converts the rate */
     volatile double cap_frames, cap_reads;
     volatile float cap_raw_pk;
     void *ph, *ch;
     char play_devs[256], cap_devs[512], play_dev[96], cap_dev[96], err[160], cap_err[160];
-    short cbuf[MAXBLOCK * 8];
+    unsigned char cbytes[MAXBLOCK * 16];   /* raw capture period: up to 1024 frames x 2 ch x 4 bytes */
 } Eng;
 
 static float clampf(float v, float lo, float hi) { return v < lo ? lo : v > hi ? hi : v; }
@@ -944,7 +953,9 @@ API Eng *eng_create(int sr, int block) {
     g->dcur[0] = g->dcur[1] = -1; g->on_s = 1; g->in_s = 1; g->out_s = 1; g->dry_s = 1; g->wet_s = 0.6f; g->rdry_s = 1;
     g->pdry_s = 1; g->bal_a_s = g->bal_b_s = 1; g->width_s = 1; g->cmp_swell_g = 1; g->cmp_mix_s = 1;
     g->rnd = 0x9E3779B9u;
-    g->ratio = 1.0; g->priming = 1; g->target = 512;
+    g->cfade = g->cfade_t = 1.0f;
+    g->ratio = 1.0; g->rbase = 1.0; g->priming = 1; g->target = 512;
+    g->cap_fmt_req = g->pend_fmt = 2; g->cap_rate_req = g->pend_rate = sr;
     for (int k = 0; k < 4; k++) g->cab[k].key[0] = -1;
     g->lp.key[0] = g->hp.key[0] = g->amp_pre.key[0] = g->amp_bass.key[0] = g->amp_mid.key[0] = g->amp_treb.key[0] = -1;
     pthread_mutex_init(&g->lock, NULL);
@@ -1075,8 +1086,12 @@ static void fx_block(Eng *g, float *L, float *R, int n) {
     float gi0 = g->in_s, gi1 = p[P_INGAIN];
     g->in_s = gi1;
     float pk0 = 0, pk1 = 0;
+    float cf = g->cfade, cf_t = g->cfade_t;                    /* fade position 0..1, gain = S-curve */
+    float cf_step = 1.0f / ((cf_t < cf ? 0.015f : 0.020f) * sr);   /* 15 ms out, 20 ms in */
     for (int i = 0; i < n; i++) {
-        float gi = gi0 + (gi1 - gi0) * (i + 1) / n;
+        if (cf < cf_t) { cf += cf_step; if (cf > cf_t) cf = cf_t; }
+        else if (cf > cf_t) { cf -= cf_step; if (cf < cf_t) cf = cf_t; }
+        float gi = (gi0 + (gi1 - gi0) * (i + 1) / n) * (cf * cf * (3.0f - 2.0f * cf));
         float l = L[i], r = R[i];
         if (route == ROUTE_L) r = l; else if (route == ROUTE_R) l = r;
         else if (route == ROUTE_SUM) { l = r = 0.5f * (l + r); }
@@ -1086,6 +1101,7 @@ static void fx_block(Eng *g, float *L, float *R, int n) {
         if (al > pk0) pk0 = al;
         if (ar > pk1) pk1 = ar;
     }
+    g->cfade = cf;
     g->in_pk[0] = fmaxf(g->in_pk[0] * 0.9f, pk0);
     g->in_pk[1] = fmaxf(g->in_pk[1] * 0.9f, pk1);
 
@@ -1283,7 +1299,8 @@ static int ring_pull(Eng *g, float *L, float *R, int n) {
     if (g->integ * ki > 0.01) g->integ = 0.01 / ki;
     if (g->integ * ki < -0.01) g->integ = -0.01 / ki;
     double ratio = 1.0 + kp * err + ki * g->integ;
-    g->ratio = ratio < 0.988 ? 0.988 : ratio > 1.012 ? 1.012 : ratio;
+    ratio = ratio < 0.988 ? 0.988 : ratio > 1.012 ? 1.012 : ratio;
+    g->ratio = ratio * g->rbase;          /* rbase != 1 when the device runs at another rate than the engine */
     return 1;
 }
 
@@ -1300,18 +1317,19 @@ API int eng_pull(Eng *g, float *out, int n) {
 API void eng_set_target(Eng *g, int frames) { g->target = frames; }
 
 /* Status: see STATUS_KEYS in brickambientfx.py */
-#define NSTATUS 39
+#define NSTATUS 42
 API int eng_status(Eng *g, float *o, int max) {
     float s[NSTATUS] = {
         g->in_pk[0], g->in_pk[1], g->out_pk[0], g->out_pk[1], g->load,
         (float)g->underruns, (float)g->cap_xruns, (float)g->rs_under, (float)g->fill_avg,
-        (float)((g->ratio - 1.0) * 1e6), (float)g->cap_open, (float)g->play_open, (float)g->rt_play,
+        (float)((g->ratio / g->rbase - 1.0) * 1e6), (float)g->cap_open, (float)g->play_open, (float)g->rt_play,
         (float)g->cap_period, (float)g->play_buffer, g->dcur[0] / g->sr, (float)g->blocks, (float)g->cap_rate,
         (float)g->target, (float)g->priming, (float)g->cap_channels, (float)g->rs_over, (float)g->play_period,
         (float)g->rt_cap, (float)g->cap_frames, (float)g->cap_reads, g->cap_raw_pk, (float)g->cap_buffer,
         (float)g->cap_opens, (float)g->wpos, (float)g->nan_resets,
         g->cmp_gr_show, (float)g->gev, (float)g->glitch_count, g->frz_s, g->rv.tank_pk, (float)g->rv.tank_clip,
-        (float)(g->sp_dly.xf.cur != 0 && (int)g->p[P_DLY_TYPE] == 0), (float)(g->sp_rev.xf.cur != 0 && (int)g->p[P_REV_TYPE] == 0) };
+        (float)(g->sp_dly.xf.cur != 0 && (int)g->p[P_DLY_TYPE] == 0), (float)(g->sp_rev.xf.cur != 0 && (int)g->p[P_REV_TYPE] == 0),
+        (float)g->cap_fmt_open, g->cap_max[0], g->cap_max[1] };
     int n = max < NSTATUS ? max : NSTATUS;
     memcpy(o, s, n * sizeof(float));
     return n;
@@ -1376,31 +1394,73 @@ static void c_close(Eng *g) {
 
 static int c_open(Eng *g) {
     char list[512];
+    pthread_mutex_lock(&g->lock);
     strncpy(list, g->cap_devs, sizeof(list) - 1); list[sizeof(list) - 1] = 0;
+    pthread_mutex_unlock(&g->lock);
+    int fmts[2] = {g->cap_fmt_req, 2}, nf = g->cap_fmt_req == 2 ? 1 : 2;   /* the device's best format, then S16_LE */
+    int rate = g->cap_rate_req > 0 ? g->cap_rate_req : g->sr;
     char *save = NULL;
     for (char *dev = strtok_r(list, "\n", &save); dev; dev = strtok_r(NULL, "\n", &save)) {
-        for (int chn = 2; chn >= 1; chn--) {
-            void *pcm = NULL;
-            int err = A.open(&pcm, dev, 1, 0);                         /* capture, blocking */
-            if (err < 0) { snprintf(g->cap_err, sizeof(g->cap_err), "%s: %s", dev, A.strerror(err)); break; }
-            err = A.setp(pcm, 2, 3, (unsigned)chn, (unsigned)g->sr, 1, 6000);   /* S16_LE, interleaved, 6 ms */
-            if (err < 0) {
-                snprintf(g->cap_err, sizeof(g->cap_err), "%s %dch: %s", dev, chn, A.strerror(err));
-                A.close(pcm);
-                continue;
+        int opened = 0;
+        for (int k = 0; k < nf && !opened; k++) {
+            for (int chn = 2; chn >= 1; chn--) {
+                void *pcm = NULL;
+                int err = A.open(&pcm, dev, 1, 0);                     /* capture, blocking */
+                if (err < 0) { snprintf(g->cap_err, sizeof(g->cap_err), "%s: %s", dev, A.strerror(err)); k = nf; break; }
+                err = A.setp(pcm, fmts[k], 3, (unsigned)chn, (unsigned)rate, 1, 6000);   /* interleaved, 6 ms */
+                if (err < 0) {
+                    snprintf(g->cap_err, sizeof(g->cap_err), "%s fmt %d %dch %d Hz: %s", dev, fmts[k], chn, rate, A.strerror(err));
+                    A.close(pcm);
+                    continue;
+                }
+                unsigned long buf = 0, per = 0;
+                A.getp(pcm, &buf, &per);
+                if (per == 0 || per > MAXBLOCK) per = 128;
+                pthread_mutex_lock(&g->lock);
+                double base = (double)rate / g->sr;
+                if (base != g->rbase) { g->rbase = base; g->integ = 0; }
+                g->ratio = g->rbase;
+                pthread_mutex_unlock(&g->lock);
+                g->ch = pcm; g->cap_period = (int)per; g->cap_channels = chn; g->cap_rate = rate; g->cap_buffer = (int)buf;
+                g->cap_fmt_open = fmts[k];
+                g->cap_max[0] = g->cap_max[1] = 0;
+                g->cap_opens++;
+                strncpy(g->cap_dev, dev, sizeof(g->cap_dev) - 1);
+                g->cap_err[0] = 0;
+                A.start(pcm);
+                opened = 1;
+                break;
             }
-            unsigned long buf = 0, per = 0;
-            A.getp(pcm, &buf, &per);
-            if (per == 0 || per > MAXBLOCK) per = 128;
-            g->ch = pcm; g->cap_period = (int)per; g->cap_channels = chn; g->cap_rate = g->sr; g->cap_buffer = (int)buf;
-            g->cap_opens++;
-            strncpy(g->cap_dev, dev, sizeof(g->cap_dev) - 1);
-            g->cap_err[0] = 0;
-            A.start(pcm);
-            return 1;
         }
+        if (opened) return 1;
     }
     return 0;
+}
+
+/* Raw capture bytes -> float stereo (mono copied to both). fmt: ALSA code (2 S16_LE, 6 S24_LE, 10 S32_LE,
+ * 32 S24_3LE). Keeps the raw peak per channel in mx[2]; returns the block peak. */
+static float cap_decode(int fmt, int chn, const unsigned char *b, int r, float *out, float *mx) {
+    int bps = fmt == 32 ? 3 : (fmt == 6 || fmt == 10) ? 4 : 2;
+    float pk = 0, m0 = mx[0], m1 = mx[1];
+    for (int i = 0; i < r; i++) {
+        float v[2];
+        for (int c = 0; c < chn && c < 2; c++) {
+            const unsigned char *q = b + ((size_t)i * chn + c) * bps;
+            int32_t x;
+            if (bps == 2) x = (int32_t)(int16_t)(q[0] | (q[1] << 8)) * 65536;
+            else if (bps == 3 || fmt == 6) x = (int32_t)((uint32_t)q[0] << 8 | (uint32_t)q[1] << 16 | (uint32_t)q[2] << 24);
+            else x = (int32_t)((uint32_t)q[0] | (uint32_t)q[1] << 8 | (uint32_t)q[2] << 16 | (uint32_t)q[3] << 24);
+            v[c] = x * (1.0f / 2147483648.0f);
+        }
+        if (chn == 1) v[1] = v[0];
+        out[2 * i] = v[0]; out[2 * i + 1] = v[1];
+        float a0 = fabsf(v[0]), a1 = fabsf(v[1]);
+        if (a0 > m0) m0 = a0;
+        if (a1 > m1) m1 = a1;
+        pk = fmaxf(pk, fmaxf(a0, a1));
+    }
+    mx[0] = m0; mx[1] = m1;
+    return pk;
 }
 
 static void *capturer(void *arg) {
@@ -1419,7 +1479,7 @@ static void *capturer(void *arg) {
             pthread_mutex_unlock(&g->lock);
         }
         int per = g->cap_period, chn = g->cap_channels;
-        long r = A.readi(g->ch, g->cbuf, (unsigned long)per);
+        long r = A.readi(g->ch, g->cbytes, (unsigned long)per);
         if (r < 0) {
             g->cap_xruns++;
             if (A.recover(g->ch, (int)r, 1) < 0) {
@@ -1431,12 +1491,7 @@ static void *capturer(void *arg) {
         }
         g->cap_reads += 1;
         if (r == 0) continue;
-        float pk = 0;
-        for (long i = 0; i < r; i++) {
-            if (chn == 2) { fbuf[2 * i] = g->cbuf[2 * i] / 32768.0f; fbuf[2 * i + 1] = g->cbuf[2 * i + 1] / 32768.0f; }
-            else { fbuf[2 * i] = fbuf[2 * i + 1] = g->cbuf[i] / 32768.0f; }
-            pk = fmaxf(pk, fmaxf(fabsf(fbuf[2 * i]), fabsf(fbuf[2 * i + 1])));
-        }
+        float pk = cap_decode(g->cap_fmt_open, chn, g->cbytes, (int)r, fbuf, (float *)g->cap_max);
         g->cap_raw_pk = fmaxf(g->cap_raw_pk * 0.97f, pk);     /* raw USB level, before Input gain */
         g->cap_frames += (double)r;
         ring_push(g, fbuf, (int)r);
@@ -1487,7 +1542,16 @@ static void *writer(void *arg) {
         if (!g->ph && !p_open(g)) { usleep(500000); continue; }
         double c0 = cpu_now();
         pthread_mutex_lock(&g->lock);
-        ring_pull(g, g->L, g->R, n);
+        int got = ring_pull(g, g->L, g->R, n);
+        if (g->cap_req && g->cfade <= 0.0f) {               /* input faded out: now change the device */
+            memcpy(g->cap_devs, g->cap_pend, sizeof(g->cap_devs));
+            g->cap_fmt_req = g->pend_fmt; g->cap_rate_req = g->pend_rate;
+            g->cap_wait_opens = g->cap_opens;
+            g->cap_req = 0; g->cap_wait = 1; g->cap_change = 1;
+        }
+        if (g->cap_wait && got && !g->priming && g->cap_open && g->cap_opens != g->cap_wait_opens) {
+            g->cap_wait = 0; g->cfade_t = 1.0f;              /* the new input is playing: fade it in */
+        }
         fx_block(g, g->L, g->R, n);
         g->blocks++;
         pthread_mutex_unlock(&g->lock);
@@ -1531,11 +1595,31 @@ API int eng_start(Eng *g, const char *play_devs, const char *cap_devs, int frame
     return 1;
 }
 API void eng_set_capture(Eng *g, const char *cap_devs) {
-    strncpy(g->cap_devs, cap_devs ? cap_devs : "", sizeof(g->cap_devs) - 1);
-    g->cap_devs[sizeof(g->cap_devs) - 1] = 0;
-    g->cap_change = 1;
+    pthread_mutex_lock(&g->lock);
+    strncpy(g->cap_pend, cap_devs ? cap_devs : "", sizeof(g->cap_pend) - 1);
+    g->cap_pend[sizeof(g->cap_pend) - 1] = 0;
+    g->cap_wait = 0;
+    if (!g->play_open) {                                 /* no output running (nothing to hear): switch now */
+        memcpy(g->cap_devs, g->cap_pend, sizeof(g->cap_devs));
+        g->cap_fmt_req = g->pend_fmt; g->cap_rate_req = g->pend_rate;
+        g->cap_req = 0; g->cap_change = 1; g->cfade = g->cfade_t = 1.0f;
+    } else {
+        g->cfade_t = 0.0f;                               /* fade the input out first, the writer switches */
+        g->cap_req = 1;
+    }
+    pthread_mutex_unlock(&g->lock);
 }
 API void eng_set_buffer(Eng *g, int frames) { g->want_frames = frames; }
+/* Format (ALSA code: 2 S16_LE, 6 S24_LE, 10 S32_LE, 32 S24_3LE) and rate for the next capture open.
+ * Call before eng_start or eng_set_capture. */
+API void eng_cap_format(Eng *g, int fmt, int rate) {
+    if (fmt != 2 && fmt != 6 && fmt != 10 && fmt != 32) fmt = 2;
+    if (rate < 8000 || rate > 192000) rate = g->sr;
+    pthread_mutex_lock(&g->lock);
+    g->pend_fmt = fmt; g->pend_rate = rate;
+    if (!g->run) { g->cap_fmt_req = fmt; g->cap_rate_req = rate; }
+    pthread_mutex_unlock(&g->lock);
+}
 API const char *eng_device(Eng *g) { return g->play_dev; }
 API const char *eng_cap_device(Eng *g) { return g->cap_dev; }
 API const char *eng_error(Eng *g) { return g->err; }

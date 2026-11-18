@@ -1,4 +1,4 @@
-BrickAmbientFX v1.0.0 (Sarta Edition) - TrimUI Brick (KNULLI)
+BrickAmbientFX v1.0.2 (Sarta Edition) - TrimUI Brick (KNULLI)
 
 1. Copy everything in this folder (BrickAmbientFX.sh, the .keys files and the
    brickambientfx folder) to roms/ports on the SD card. It sits next to

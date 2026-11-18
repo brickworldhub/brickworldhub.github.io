@@ -1,4 +1,4 @@
-# BrickAmbientFX v1.0.0 - Sarta Edition
+# BrickAmbientFX v1.0.2 - Sarta Edition
 
 An ambient stereo multi-effect for the TrimUI Brick (KNULLI). It is built on BrickFX 0.2.2 and takes its idea
 from the Zoom Neurig: compressor, amp and cabinet, modulation, delay and reverb, serial or split routing, stereo out
@@ -44,6 +44,20 @@ Changing a type, turning a section on or off, changing the cabinet, the delay mo
 out, changes over while silent and fades back in (COMP and AMP 10 ms, MOD 25 ms, DELAY 30 ms, REVERB 80 ms, routing
 30 ms). Turning DELAY or REVERB off only closes its input: the echoes and the tail ring out on their own (TAIL on the
 FX page) and the dry sound is back at full level at once. Turn it on again during the tail and it carries on.
+
+## USB input (I/O page)
+
+- **Source**: Auto takes the first USB audio device; with two devices choose USB 1 or USB 2.
+- **USB input**: some USB adapters have more than one input on the same card (for example a mic input and a line
+  input). Choose Input 1, 2, 3... (only the inputs the card really has are listed; with one input it stays on 1).
+  The change fades out and back in, no restart needed. Every card remembers its own input; if the saved one is
+  gone, the app takes the first and says so in log.txt.
+- When a card is opened, the app switches on its record controls if they are off (some cards start with the line
+  input off and at 0% on the Brick, so they send only silence). Other mixer settings are not touched.
+- The input opens in the device's own best format (24 or 32 bit if it has it) and rate (48 kHz if it has it,
+  otherwise its own rate, converted in the engine).
+- STATUS > DEVICE shows which one is open, as "USB n IN m". log.txt has the full details and, 2 s after opening,
+  the real input level of each channel.
 
 ## FX page (routing)
 
