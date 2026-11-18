@@ -1,5 +1,10 @@
 # BrickSampler changes
 
+## 2.0.2 (2026-11-18)
+- USB inputs that gave silence now work: when a USB device is opened, any capture switch that is off is switched on, and a capture level left at 0 is set to 0 dB (unity). On the Brick nothing did this, so some adapters (e.g. a line in) only sent zeros. The device's mixer is written to log.txt.
+- Each USB input records in its own best format (24-bit when it has it), falling back to 16-bit.
+- log.txt shows the real input level of each channel for the first 2 s after an input opens (or "silent").
+
 ## 2.0.1 (2026-11-18)
 - REC page: new USB INPUT row. Some USB adapters have more than one input (for example mic in and line in); now you can pick Input 1, Input 2... Only the inputs the device really has are listed; with one input it stays on Input 1. Saved with the source in settings.json; if the saved input is gone, the first one is used.
 - Each input opens at a rate it really supports (48 kHz if it can, otherwise its first rate, converted to the app's rate).

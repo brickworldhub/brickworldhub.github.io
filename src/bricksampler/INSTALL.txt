@@ -1,4 +1,4 @@
-BrickSampler 2.0.1 - sampler for the TrimUI Brick (KNULLI)
+BrickSampler 2.0.2 - sampler for the TrimUI Brick (KNULLI)
 
 1. Copy everything in this folder (BrickSampler.sh, the .keys files and the
    bricksampler folder) to roms/ports on the SD card.
