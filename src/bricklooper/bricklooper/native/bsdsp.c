@@ -492,6 +492,7 @@ typedef struct {
     volatile unsigned rh, rt_;      /* write / read counters */
     int ring_target, in_under, in_drop, in_started;
     double rfrac, fill_f, drift_i, ratio;     /* drift resampler: input frames read per output frame */
+    volatile double cap_step;                 /* device rate / engine rate (1 when the device runs at the engine rate) */
     float *tap;
     volatile unsigned th_, tt_;
     volatile int tap_on;
@@ -510,6 +511,10 @@ typedef struct {
     volatile double cap_reads;
     volatile float cap_pk;
     volatile int cap_ch;
+    volatile int cap_req_fmt, cap_req_rate;   /* wanted: the device's best format and a rate it has (0 = engine's) */
+    volatile int cap_fmt, cap_rate;           /* what is open */
+    volatile float cap_lvl[2];                /* biggest raw sample per channel since the last eng_cap_level */
+    volatile int cap_nz;                      /* any non-zero sample since the last eng_cap_level */
 #endif
 } Eng;
 
@@ -981,7 +986,8 @@ static void pull_input(Eng *g, int n) {
     if (target < n) target = n;
     g->ring_target = target;
     int got = 0;
-    if (!g->in_started && avail >= (unsigned)(target + n)) {
+    double step = g->cap_step > 0 ? g->cap_step : 1.0;
+    if (!g->in_started && avail >= (unsigned)(target + n * step)) {
         g->in_started = 1; g->rfrac = 0; g->fill_f = avail;
         if (g->ratio <= 0) g->ratio = 1.0;
     }
@@ -999,6 +1005,7 @@ static void pull_input(Eng *g, int n) {
         if (r > 1.012) r = 1.012;
         if (r < 0.988) r = 0.988;
         g->ratio = r;
+        r *= step;                                  /* a device at another rate: linear conversion here */
         double end = g->rfrac + n * r;
         if ((double)avail >= end + 2.0) {
             for (int k = 0; k < n; k++) {
@@ -1452,6 +1459,22 @@ static void *writer(void *arg) {
 
 
 /* ---- capture thread: a USB interface / mic / synth into the input ring (and the REC page's tap) */
+/* ALSA format codes: S16_LE 2, S24_LE 6, S32_LE 10, S24_3LE 32 */
+static const char *fmt_name(int f) { return f == 32 ? "S24_3LE" : f == 10 ? "S32_LE" : f == 6 ? "S24_LE" : "S16_LE"; }
+static int fmt_bytes(int f) { return f == 32 ? 3 : (f == 10 || f == 6) ? 4 : 2; }
+/* one little-endian sample -> -1..1; *nz is set when it isn't exactly 0 */
+static inline float pcm_sample(const unsigned char *b, long i, int fmt, int bps, int *nz) {
+    const unsigned char *q = b + i * bps;
+    int v;
+    float s;
+    if (fmt == 32) { v = q[0] | (q[1] << 8) | (q[2] << 16); if (v & 0x800000) v -= 0x1000000; s = v / 8388608.0f; }
+    else if (fmt == 6) { v = (q[0] | (q[1] << 8) | (q[2] << 16)); if (v & 0x800000) v -= 0x1000000; s = v / 8388608.0f; }
+    else if (fmt == 10) { v = (int)((unsigned)q[0] | ((unsigned)q[1] << 8) | ((unsigned)q[2] << 16) | ((unsigned)q[3] << 24)); s = v / 2147483648.0f; }
+    else { v = (short)(q[0] | (q[1] << 8)); s = v / 32768.0f; }
+    if (v) *nz = 1;
+    return s;
+}
+
 static void *capture(void *arg) {
     Eng *g = (Eng *)arg;
     struct sched_param sp;
@@ -1460,15 +1483,28 @@ static void *capture(void *arg) {
     void *pcm = NULL;
     int gen = -1, per = 128, chn = 2;
     char devs[512] = "", last_err[160] = "";
-    static short buf[4096 * 2];
+    static unsigned char buf[4096 * 2 * 4];
+    int fmt = 2, bps = 2;                                        /* open format (ALSA code) and bytes per sample */
     static float st[4096 * 2], mono[4096];
+    /* Switching input (another device, channel, or off): 20 ms S-curve fade out on the old input, then
+       20 ms fade in on the new one, so the monitor and a running take don't click. */
+    const int FN = g->sr / 50;
+    int wfmt = 2, wrate = 0;
+    int fade = 0, fpos = 0;                                      /* fade: 0 none, -1 out, +1 in */
+    int curmode = 2;                                             /* channel mode of the open input */
     while (g->cap_run) {
-        if (gen != g->cap_gen) {
+        if (gen != g->cap_gen && pcm && fade != -1) { fade = -1; fpos = 0; }
+        if (gen != g->cap_gen && (!pcm || (fade == -1 && fpos >= FN))) {
             if (pcm) { A.drop(pcm); A.close(pcm); pcm = NULL; fprintf(stderr, "capture: closed\n"); }
+            fade = 0; fpos = 0;
             LOCK(g->qlock);
             strncpy(devs, g->cap_dev, sizeof(devs) - 1); devs[sizeof(devs) - 1] = 0;
             gen = g->cap_gen;
+            curmode = g->cap_mode;
+            wfmt = g->cap_req_fmt > 0 ? g->cap_req_fmt : 2;
+            wrate = g->cap_req_rate > 0 ? g->cap_req_rate : g->sr;
             UNLOCK(g->qlock);
+            g->cap_step = 1.0;
             g->cap_open = 0; g->cap_err[0] = 0; last_err[0] = 0;
         }
         if (!devs[0]) { usleep(50000); continue; }
@@ -1478,22 +1514,31 @@ static void *capture(void *arg) {
             strncpy(list, devs, sizeof(list) - 1); list[sizeof(list) - 1] = 0;
             for (char *dev = strtok_r(list, "\n", &save); dev && !pcm; dev = strtok_r(NULL, "\n", &save)) {
                 for (int c = 2; c >= 1 && !pcm; c--) {
-                    void *p = NULL;
-                    int err = A.open(&p, dev, 1, 0);                      /* capture, blocking */
-                    if (err < 0) { snprintf(g->cap_err, sizeof(g->cap_err), "%s: %s", dev, A.strerror(err)); break; }
-                    err = A.setp(p, 2, 3, (unsigned)c, (unsigned)g->sr, 1, 6000);
-                    if (err < 0) {
-                        snprintf(g->cap_err, sizeof(g->cap_err), "%s %dch: %s", dev, c, A.strerror(err));
-                        A.close(p);
-                        continue;
+                    /* the device's own format and rate first; then S16_LE at that rate; then S16_LE at the
+                       engine rate (ALSA converts) */
+                    int tf[3] = {wfmt, 2, 2}, tr[3] = {wrate, wrate, g->sr};
+                    for (int a = 0; a < 3 && !pcm; a++) {
+                        if (a > 0 && tf[a] == tf[a - 1] && tr[a] == tr[a - 1]) continue;
+                        void *p = NULL;
+                        int err = A.open(&p, dev, 1, 0);                  /* capture, blocking */
+                        if (err < 0) { snprintf(g->cap_err, sizeof(g->cap_err), "%s: %s", dev, A.strerror(err)); c = 0; break; }
+                        err = A.setp(p, tf[a], 3, (unsigned)c, (unsigned)tr[a], 1, 6000);
+                        if (err < 0) {
+                            snprintf(g->cap_err, sizeof(g->cap_err), "%s %dch %s %d Hz: %s", dev, c, fmt_name(tf[a]), tr[a], A.strerror(err));
+                            A.close(p);
+                            continue;
+                        }
+                        unsigned long bsz = 0, p_ = 0;
+                        A.getp(p, &bsz, &p_);
+                        per = (p_ > 0 && p_ <= 4096) ? (int)p_ : 128;
+                        chn = c; pcm = p; fmt = tf[a]; bps = fmt_bytes(fmt);
+                        g->cap_fmt = fmt; g->cap_rate = tr[a];
+                        g->cap_step = (double)tr[a] / g->sr;
+                        strncpy(g->cap_used, dev, sizeof(g->cap_used) - 1);
+                        A.start(pcm);
+                        fprintf(stderr, "capture: opened %s, %s, %d ch, %d Hz%s, period %d, buffer %lu frames\n", dev, fmt_name(fmt), c,
+                                tr[a], tr[a] != g->sr ? " (converted to the engine rate in the code)" : "", per, bsz);
                     }
-                    unsigned long bsz = 0, p_ = 0;
-                    A.getp(p, &bsz, &p_);
-                    per = (p_ > 0 && p_ <= 4096) ? (int)p_ : 128;
-                    chn = c; pcm = p;
-                    strncpy(g->cap_used, dev, sizeof(g->cap_used) - 1);
-                    A.start(pcm);
-                    fprintf(stderr, "capture: opened %s, %d ch, period %d, buffer %lu\n", dev, c, per, bsz);
                 }
             }
             if (!pcm) {
@@ -1505,31 +1550,45 @@ static void *capture(void *arg) {
                 continue;
             }
             g->cap_period = per; g->cap_ch = chn; g->cap_open = 1; g->cap_err[0] = 0; last_err[0] = 0;
+            g->cap_lvl[0] = g->cap_lvl[1] = 0; g->cap_nz = 0;
+            fade = 1; fpos = 0;
         }
         long r = A.readi(pcm, buf, (unsigned long)per);
         if (r < 0) {
             if (A.recover(pcm, (int)r, 1) < 0) {
                 snprintf(g->cap_err, sizeof(g->cap_err), "read failed: %s", A.strerror((int)r));
                 fprintf(stderr, "capture: %s (unplugged?)\n", g->cap_err);
-                A.close(pcm); pcm = NULL; g->cap_open = 0; usleep(500000);
+                A.close(pcm); pcm = NULL; g->cap_open = 0; g->cap_step = 1.0; fade = 0; usleep(500000);
             } else A.start(pcm);
             continue;
         }
         if (r == 0) continue;
         g->cap_reads += 1;
-        int mode = g->cap_mode;
-        float pk = 0;
+        int mode = curmode;
+        float pk = 0, lv0 = g->cap_lvl[0], lv1 = g->cap_lvl[1];
+        int nz = 0;
         for (long k = 0; k < r; k++) {
             float l, rr;
-            if (chn == 2) { l = buf[2 * k] / 32768.0f; rr = buf[2 * k + 1] / 32768.0f; }
-            else l = rr = buf[k] / 32768.0f;
+            if (chn == 2) { l = pcm_sample(buf, 2 * k, fmt, bps, &nz); rr = pcm_sample(buf, 2 * k + 1, fmt, bps, &nz); }
+            else l = rr = pcm_sample(buf, k, fmt, bps, &nz);
+            if (fabsf(l) > lv0) lv0 = fabsf(l);
+            if (fabsf(rr) > lv1) lv1 = fabsf(rr);
             if (fabsf(l) > pk) pk = fabsf(l);
             if (fabsf(rr) > pk) pk = fabsf(rr);
+            if (fade) {
+                float x = fpos < FN ? (float)fpos / FN : 1.0f, w = 0.5f - 0.5f * cosf(3.14159265f * x);
+                if (fade < 0) w = 1.0f - w;
+                l *= w; rr *= w;
+                if (fpos < FN) fpos++;
+                else if (fade > 0) fade = 0;                     /* faded in; a fade out waits at 0 */
+            }
             if (mode == 0) { st[2 * k] = st[2 * k + 1] = l; mono[k] = l; }
             else if (mode == 1) { st[2 * k] = st[2 * k + 1] = rr; mono[k] = rr; }
             else { st[2 * k] = l; st[2 * k + 1] = rr; mono[k] = 0.5f * (l + rr); }
         }
         g->cap_pk = fmaxf(g->cap_pk * 0.97f, pk);
+        g->cap_lvl[0] = lv0; g->cap_lvl[1] = lv1;
+        if (nz) g->cap_nz = 1;
         ring_push(g, st, (int)r);
         if (g->tap_on) tap_push(g, mono, (int)r);
     }
@@ -1553,6 +1612,15 @@ API int eng_cap_open(Eng *g, const char *dev, int mode) {
     return 1;
 }
 API const char *eng_cap_error(Eng *g) { return g->cap_err; }
+/* format: ALSA code (2 S16_LE, 6 S24_LE, 10 S32_LE, 32 S24_3LE); rate: one the device has (0 = engine rate).
+   Used by the next eng_cap_open. */
+API void eng_cap_format(Eng *g, int format, int rate) { g->cap_req_fmt = format; g->cap_req_rate = rate; }
+/* o: [biggest sample L, R since the last call, any non-zero sample, open format, open rate]; resets the levels */
+API int eng_cap_level(Eng *g, double *o) {
+    o[0] = g->cap_lvl[0]; o[1] = g->cap_lvl[1]; o[2] = g->cap_nz; o[3] = g->cap_fmt; o[4] = g->cap_rate;
+    g->cap_lvl[0] = g->cap_lvl[1] = 0; g->cap_nz = 0;
+    return g->cap_open;
+}
 
 /* devs: newline-separated ALSA device names to try in order. frames: wanted buffer size. */
 API int eng_start(Eng *g, const char *devs, int frames) {

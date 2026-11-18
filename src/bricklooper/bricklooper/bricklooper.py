@@ -59,7 +59,7 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import pygame
 
 APP_NAME = "BRICKLOOPER"
-VERSION = "1.5.0"
+VERSION = "1.5.2"
 # 48 kHz on the Brick: the system mixer and the codec run at 48k, and the speaker and mic share one
 # clock, so asking the mic for 44.1k while playback runs at 48k can stall the capture.
 SR = 48000 if os.path.isdir("/userdata/roms") else 44100
@@ -573,6 +573,9 @@ def native_lib():
             lib.eng_tap_read.restype, lib.eng_tap_read.argtypes = ci, [vp, vp, ci]
             if hasattr(lib, "eng_cap_open"):
                 lib.eng_cap_open.restype, lib.eng_cap_open.argtypes = ci, [vp, C.c_char_p, ci]
+            if hasattr(lib, "eng_cap_format"):
+                lib.eng_cap_format.restype, lib.eng_cap_format.argtypes = None, [vp, ci, ci]
+                lib.eng_cap_level.restype, lib.eng_cap_level.argtypes = ci, [vp, C.POINTER(C.c_double)]
                 lib.eng_cap_error.restype, lib.eng_cap_error.argtypes = C.c_char_p, [vp]
         print(f"dsp: native {name} (version {lib.bsdsp_version()})", flush=True)
         _native[0] = lib
@@ -1270,6 +1273,20 @@ class NativeEngine:
         if self.has_capture:
             self.lib.eng_cap_open(self.h, (dev or "").encode(), int(mode))
 
+    def cap_format(self, fmt, rate):
+        """the format and rate for the next set_capture (the device's own; S16_LE / engine rate as fallback)"""
+        if self.has_capture and hasattr(self.lib, "eng_cap_format"):
+            self.lib.eng_cap_format(self.h, ALSA_FORMATS.get(fmt, 2), int(rate or 0))
+
+    def cap_level(self):
+        """(peak L, peak R, any non-zero sample) since the last call, raw from the card"""
+        if not (self.has_capture and hasattr(self.lib, "eng_cap_level")):
+            return None
+        import ctypes as C
+        o = (C.c_double * 5)()
+        self.lib.eng_cap_level(self.h, o)
+        return o[0], o[1], bool(o[2])
+
     def set_mic(self, on):
         if self.looper:
             self.lib.eng_mic(self.h, 1 if on else 0)
@@ -1817,6 +1834,115 @@ def capture_cards():
         name = desc.split(" - ", 1)[1] if " - " in desc else desc
         out.append((cid, " ".join(name.split()) or cid))
     return out
+
+
+def capture_devices(cid):
+    """Recording devices of a USB card, as device numbers ([0], or [0, 1] for an adapter with a mic in and
+    a line in...), from /proc/asound/cardN/pcmXc. [] when the card is not plugged in."""
+    n = card_index(cid)
+    if n is None:
+        return []
+    out = []
+    for d in glob.glob(os.path.join(os.path.dirname(ASOUND_CARDS), f"card{n}", "pcm*c")):
+        m = re.match(r"pcm(\d+)c$", os.path.basename(d))
+        if m:
+            out.append(int(m.group(1)))
+    return sorted(out)
+
+
+def capture_stream(n, dev):
+    """What a USB card says about recording on one device (/proc/asound/cardN/streamDEV):
+    (formats, channels, rates). rates are (low, high) pairs; a fixed rate is (r, r). Empty when unknown."""
+    fmts, chans, rates = [], [], []
+    try:
+        with open(os.path.join(os.path.dirname(ASOUND_CARDS), f"card{n}", f"stream{dev}")) as f:
+            txt = f.read()
+    except OSError:
+        return fmts, chans, rates
+    if "Capture:" not in txt:
+        return fmts, chans, rates
+    body = txt.split("Capture:", 1)[1].split("Playback:", 1)[0]
+    for ln in body.splitlines():
+        k, _, v = ln.strip().partition(":")
+        if k == "Format":
+            fmts += [x for x in re.split(r"[,\s]+", v.strip()) if x and x not in fmts]
+        elif k == "Channels":
+            chans += [int(x) for x in re.findall(r"\d+", v) if int(x) not in chans]
+        elif k == "Rates":
+            nums = [int(x) for x in re.findall(r"\d+", v)]
+            if "continuous" in v and len(nums) >= 2:
+                rates.append((nums[0], nums[1]))
+            else:
+                rates += [(r, r) for r in nums if (r, r) not in rates]
+    return fmts, chans, rates
+
+
+def pick_rate(rates, want=48000):
+    """48000 when the device has it, else the first rate it lists (None when it lists none)."""
+    if any(lo <= want <= hi for lo, hi in rates):
+        return want
+    return rates[0][0] if rates else None
+
+
+ALSA_FORMATS = {"S16_LE": 2, "S24_LE": 6, "S32_LE": 10, "S24_3LE": 32}
+
+
+def pick_format(fmts):
+    """The device's own best capture format (some USB line inputs only send real audio in 24-bit)."""
+    for f in ("S24_3LE", "S32_LE", "S24_LE", "S16_LE"):
+        if f in fmts:
+            return f
+    return "S16_LE"
+
+
+def usb_mixer_setup(n):
+    """Log the USB card's mixer, then switch on any capture switch that is off and give a capture volume
+    left at 0% a neutral gain (0 dB, or 80% without a dB scale). A computer often does this by itself; on
+    the Brick nothing does, and the input then sends only zeros. Nothing else is touched."""
+    exe = shutil.which("amixer")
+    if not exe:
+        print("loop: amixer not found, USB mixer left as it is", flush=True)
+        return
+    try:
+        out = subprocess.run([exe, "-c", str(n), "scontents"], capture_output=True, text=True, timeout=3).stdout
+    except Exception as ex:
+        print(f"loop: amixer -c {n}: {ex}", flush=True)
+        return
+    print(f"loop: amixer -c {n} scontents:\n" + (out.rstrip() or "(no controls)"), flush=True)
+    for blk in re.split(r"(?m)^Simple mixer control ", out)[1:]:
+        lines = blk.splitlines()
+        m = re.match(r"'(.+)',(\d+)", lines[0])
+        if not m:
+            continue
+        name = f"{m.group(1)},{m.group(2)}"
+        caps = next((ln.split(":", 1)[1].split() for ln in lines if "Capabilities:" in ln), [])
+        vals = [ln.strip() for ln in lines if "Capture" in ln and "[" in ln and "Limits" not in ln]
+        todo = []
+        if "cswitch" in caps and any("[off]" in v for v in vals):
+            todo.append(["cap"])
+        if any(c.startswith("cvolume") for c in caps) and vals and all("[0%]" in v for v in vals):
+            todo.append(["capture", "0dB"] if any("dB]" in v for v in vals) else ["capture", "80%"])
+        for args in todo:
+            r = subprocess.run([exe, "-c", str(n), "-q", "sset", name] + args, capture_output=True, text=True, timeout=3)
+            if r.returncode != 0 and args[-1] == "0dB":
+                args = ["capture", "80%"]
+                r = subprocess.run([exe, "-c", str(n), "-q", "sset", name] + args, capture_output=True, text=True,
+                                   timeout=3)
+            print(f"loop: mixer card {n} '{name}' {' '.join(args)}: " + ("ok" if r.returncode == 0 else r.stderr.strip()),
+                  flush=True)
+
+
+def read_hw_params(n, dev):
+    """What the card really runs at once it is open (format, channels, rate, period, buffer), one line."""
+    try:
+        with open(os.path.join(os.path.dirname(ASOUND_CARDS), f"card{n}", f"pcm{dev}c", "sub0", "hw_params")) as f:
+            d = dict(ln.split(":", 1) for ln in f.read().splitlines() if ":" in ln)
+    except (OSError, ValueError):
+        return ""
+    d = {k.strip(): v.strip() for k, v in d.items()}
+    rate = d.get("rate", "?").split()[0]
+    return (f"format {d.get('format', '?')}, {d.get('channels', '?')} ch, {rate} Hz, "
+            f"period {d.get('period_size', '?')}, buffer {d.get('buffer_size', '?')} frames")
 
 
 class Recorder:
@@ -2396,6 +2522,7 @@ P_CLICKVOL = Param("click", "Click vol", "lin", 0, 100, 5, lambda v: f"{int(v)}%
 P_OFFSET = Param("loop_offset", "Offset", "lin", -100, 200, 1, f_ms, scope="ui")
 TRACK_PARAMS = [Param(f"track{i}", f"Track {i + 1}", "track") for i in range(LOOP_TRACKS)]
 P_SOURCE = Param("rec_source", "Source", "source", scope="ui")
+P_USBIN = Param("usb_in", "USB input", "usbin", scope="ui")      # which recording device of the USB card
 P_CHANNEL = Param("rec_channel", "Channel", "enum", opts=REC_CHANNELS, scope="ui")
 REC_PARAMS = [P_RECORD, P_SOURCE, P_CHANNEL,
               Param("gain", "Input gain", "lin", 0, 4, 0.05, f_gain, scope="rec"),
@@ -2462,6 +2589,7 @@ Z ##### ....# ...#. ..#.. .#... #.... #####
 ; ..... .##.. .##.. ..... .##.. ..#.. .#...
 : ..... .##.. .##.. ..... .##.. .##.. .....
 - ..... ..... ..... ##### ..... ..... .....
+· ..... ..... ..... ..#.. ..... ..... .....
 + ..... ..#.. ..#.. ##### ..#.. ..#.. .....
 % ##... ##..# ...#. ..#.. .#... #..## ...##
 / ..... ....# ...#. ..#.. .#... #.... .....
@@ -2887,7 +3015,7 @@ class App:
     # ---------- settings (app-wide, not per project)
     def load_settings(self):
         self.ui = dict(display=0, project="DEFAULT", latency=0, ccmap=dict(DEFAULT_CCMAP),
-                       rec_source="internal", rec_channel=2, volume=1.0, loop_offset=0)
+                       rec_source="internal", rec_channel=2, volume=1.0, loop_offset=0, usb_inputs={}, usb_dev=0)
         try:
             with open(SETTINGS_FILE) as f:
                 d = json.load(f)
@@ -2903,6 +3031,9 @@ class App:
         self.ui["rec_source"] = str(self.ui["rec_source"]) or "internal"
         self.ui["rec_channel"] = int(clamp(int(self.ui["rec_channel"]), 0, 2))
         self.ui["loop_offset"] = int(clamp(int(self.ui["loop_offset"]), -100, 200))
+        ui_in = self.ui["usb_inputs"] if isinstance(self.ui["usb_inputs"], dict) else {}
+        self.ui["usb_inputs"] = {str(c): int(d) for c, d in ui_in.items() if str(d).isdigit()}   # card -> device
+        self.ui["usb_dev"] = int(self.ui["usb_dev"]) if str(self.ui["usb_dev"]).isdigit() else 0
         cm = self.ui["ccmap"] if isinstance(self.ui["ccmap"], dict) else {}
         self.ui["ccmap"] = {str(int(c)): k for c, k in cm.items()
                             if str(c).isdigit() and 0 <= int(c) < 128 and k in CC_TARGETS}
@@ -3565,6 +3696,9 @@ class App:
             return "Press A"
         if p.kind == "source":
             return self.source_label(self.ui["rec_source"])
+        if p.kind == "usbin":
+            k = self.usb_input()
+            return f"Input {k[1] + 1}" if k else "Input 1"
         if p.scope == "ui":
             if p.key == "latency":
                 idx = int(self.ui["latency"])
@@ -3604,6 +3738,14 @@ class App:
             i = ids.index(cur) if cur in ids else 0
             self.ui["rec_source"] = ids[clamp(i + direction, 0, len(ids) - 1)]
             return
+        if p.kind == "usbin":
+            k = self.usb_input()
+            if k is None:
+                return
+            devs = capture_devices(self.ui["rec_source"])
+            i = clamp(k[1] + direction, 0, len(devs) - 1)      # one device only: stays on Input 1
+            self.ui["usb_inputs"][self.ui["rec_source"]] = devs[i]
+            return
         d = self.target(p)
         v = d[p.key]
         if p.kind == "enum":
@@ -3641,6 +3783,23 @@ class App:
                 self.engine.push_fx()
         self.save_settings()
         self.show_toast(f"VOLUME {round(v * 100)}%", 1.2)
+
+    def usb_input(self, log=False):
+        """(device number, position) of the chosen recording device of the USB source, or None (built-in
+        mic, or the card is not plugged in). A device that is gone falls back to the first one (DEV=0)."""
+        src = self.ui["rec_source"]
+        if src == "internal":
+            return None
+        devs = capture_devices(src)
+        if not devs:
+            return None
+        want = self.ui["usb_inputs"].get(src, devs[0])
+        if want not in devs:
+            if log:
+                print(f"loop: card {src} has no recording device {want} now (it has {devs}): "
+                      f"using device {devs[0]} (Input 1)", flush=True)
+            want = devs[0]
+        return want, devs.index(want)
 
     def source_label(self, cid):
         """Built-in mic, or USB: any USB interface / mic / synth (numbered when more than one is plugged in)."""
@@ -3744,7 +3903,7 @@ class App:
                 self.save_settings()
             elif p.key == "loop_offset":
                 self.save_settings()
-            elif p.key in ("rec_source", "rec_channel") and not self.recorder.recording:
+            elif p.key in ("rec_source", "rec_channel", "usb_in") and not self.recorder.recording:
                 self.recorder.set_source(self.ui["rec_source"], self.ui["rec_channel"])
                 self.update_capture()
                 self.save_settings()
@@ -3822,9 +3981,21 @@ class App:
         elif not self.engine.loop["cap_open"]:
             self.show_toast("USB input not connected: " + (self.engine.capture_error() or "see log.txt"), 3)
 
+    def log_usb_cards(self):
+        """log.txt: the recording devices of each USB card"""
+        cards = capture_cards()
+        if not cards:
+            print("loop: no USB recording device plugged in", flush=True)
+        for i, (cid, _) in enumerate(cards):
+            n = card_index(cid)
+            print(f"loop: USB {i + 1} = card {n} ({cid}): recording devices {capture_devices(cid)}", flush=True)
+
     def update_capture(self):
         """The USB input (interface, mic, synth) is opened by the engine and shared by the looper and REC."""
         e = self.engine
+        if not getattr(self, "_cards_logged", False) and use_alsa_tools():
+            self._cards_logged = True
+            self.log_usb_cards()
         if not getattr(e, "has_capture", False):
             return
         src = self.ui["rec_source"]
@@ -3833,12 +4004,30 @@ class App:
             n = card_index(src)
             self.cap_present = n is not None
             if n is None:
+                self._mixer_done = {x for x in getattr(self, "_mixer_done", set()) if x[0] != src}   # set again on plug-in
                 e.set_capture("", 0)
                 print(f"loop: input {src} is not plugged in (waiting for it)", flush=True)
                 return
-            devs = [f"plughw:CARD={src},DEV=0", f"hw:CARD={src},DEV=0", f"plughw:{n},0", f"hw:{n},0"]
+            k = self.usb_input(log=True)
+            d, pos = k if k else (0, 0)
+            fmts, chans, rates = capture_stream(n, d)
+            rate = pick_rate(rates, 48000) or SR
+            fmt = pick_format(fmts)
+            if (src, n) not in getattr(self, "_mixer_done", set()):
+                self._mixer_done = getattr(self, "_mixer_done", set()) | {(src, n)}
+                usb_mixer_setup(n)
+            e.cap_format(fmt, rate)
+            self.ui["usb_dev"] = d
+            devs = [f"plughw:CARD={src},DEV={d}", f"hw:CARD={src},DEV={d}", f"plughw:{n},{d}", f"hw:{n},{d}"]
             e.set_capture("\n".join(devs), self.ui["rec_channel"])
-            print(f"loop: input {src} (card {n}), channel {REC_CHANNELS[self.ui['rec_channel']]}", flush=True)
+            self._hw_logged = None
+            self._cap_dev = (n, d)
+            rtxt = ", ".join(str(a) if a == b else f"{a}-{b}" for a, b in rates) or "?"
+            print(f"loop: input {src} (card {n}), device {d} = Input {pos + 1} of {len(capture_devices(src))}, "
+                  f"channel {REC_CHANNELS[self.ui['rec_channel']]}; the card says: formats "
+                  f"{'/'.join(fmts) or '?'}, channels {'/'.join(map(str, chans)) or '?'}, rates {rtxt}", flush=True)
+            print(f"loop: opening {devs[0]} as {fmt}, {rate} Hz"
+                  + (f" (converted to {SR} Hz in the code)" if rate != SR else ""), flush=True)
         else:
             e.set_capture("", 0)
             on = src == "internal" and ON_DEVICE
@@ -3859,12 +4048,34 @@ class App:
         if src != "internal" and use_alsa_tools():
             present = card_index(src) is not None
             if present != getattr(self, "cap_present", None):
+                if present:
+                    self.log_usb_cards()
                 self.update_capture()
+        cd = getattr(self, "_cap_dev", None)
+        if src != "internal" and cd and e.loop["cap_open"] and getattr(self, "_hw_logged", None) != cd:
+            self._hw_logged = cd
+            hw = read_hw_params(*cd)
+            print(f"loop: open {src} card {cd[0]} device {cd[1]}: {hw or 'card details not available'}"
+                  f" (engine period {e.loop['cap_period']})", flush=True)
+            e.cap_level()                                  # start measuring now
+            self._lvl_due = (cd, now + 1.9)
+        due = getattr(self, "_lvl_due", None)
+        if due and now >= due[1]:
+            self._lvl_due = None
+            lv = e.cap_level() if src != "internal" and e.loop["cap_open"] else None
+            if lv:
+                ch = int(e.loop["cap_ch"] or 2)
+                if not lv[2]:
+                    txt = "silent (all 0)"
+                else:
+                    txt = ", ".join(f"{nm} {20 * math.log10(max(x, 1e-9)):.1f} dBFS"
+                                    for nm, x in (("L", lv[0]), ("R", lv[1]))[:ch])
+                print(f"loop: level of card {due[0][0]} device {due[0][1]} after 2 s: {txt}", flush=True)
         if now >= getattr(self, "_log_t", 0):
             self._log_t = now + 10.0
             lp = e.loop
             db = lambda x: f"{20 * math.log10(max(x, 1e-6)):.0f}dB"
-            print(f"loop: input={src} open={int(lp['cap_open'])} ch={lp['cap_ch']} reads={lp['cap_reads']} "
+            print(f"loop: input={src} dev={cd[1] if cd and src != 'internal' else '-'} open={int(lp['cap_open'])} ch={lp['cap_ch']} reads={lp['cap_reads']} "
                   f"usb_peak={db(lp['cap_peak'])} in_peak={db(max(lp['in_peak']))} under={lp['in_under']} "
                   f"drift={lp.get('drift', 0):+.0f}ppm "
                   f"mic_on={int(lp['mic_on'])} err='{e.capture_error()}' out_peak={db(max(e.peak))} "
@@ -3875,7 +4086,11 @@ class App:
         if self.ui["rec_source"] == "internal":
             return "MIC (REC)" if lp.get("mic_on") else "BUILT-IN MIC"
         if lp.get("cap_open"):
-            return self.source_label(self.ui["rec_source"]).upper()
+            ids = [c for c, _ in capture_cards()]
+            src, k = self.ui["rec_source"], self.usb_input()
+            if src in ids and k:
+                return f"USB {ids.index(src) + 1} IN {k[1] + 1}"
+            return self.source_label(src).upper()
         return "NOT CONNECTED"
 
     def update_comp(self):
@@ -4135,7 +4350,7 @@ class App:
         """Columns of (section title, params). Up/down walks the left column, then the right."""
         name = PAGES[self.page]
         if name == "LOOP":
-            return [[("LOOPER", [P_SOURCE] + LOOPER_PARAMS)], [("METRONOME", METRO_PARAMS)]]
+            return [[("LOOPER", [P_SOURCE, P_USBIN] + LOOPER_PARAMS)], [("METRONOME", METRO_PARAMS)]]
         if name == "SAMPLE":
             left = ([P_FILE, P_ROOT] if self.state.mode == "chromatic" else [P_PAD, P_FILE]) + SAMPLE_PARAMS_TAIL[:4]
             rest = SAMPLE_PARAMS_TAIL[4:]
