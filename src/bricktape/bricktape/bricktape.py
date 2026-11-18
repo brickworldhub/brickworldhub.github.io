@@ -53,7 +53,7 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import pygame
 
 APP_NAME = "BRICKTAPE"
-VERSION = "1.1.1"
+VERSION = "1.1.2"
 # 48 kHz on the Brick: the system mixer and the codec run at 48k, and the speaker and mic share one
 # clock, so asking the mic for 44.1k while playback runs at 48k can stall the capture.
 SR = 48000 if os.path.isdir("/userdata/roms") else 44100
@@ -584,6 +584,9 @@ def native_lib():
             if hasattr(lib, "eng_cap_open"):
                 lib.eng_cap_open.restype, lib.eng_cap_open.argtypes = ci, [vp, C.c_char_p, ci]
                 lib.eng_cap_error.restype, lib.eng_cap_error.argtypes = C.c_char_p, [vp]
+                if hasattr(lib, "eng_cap_config"):
+                    lib.eng_cap_config.restype, lib.eng_cap_config.argtypes = None, [vp, C.c_char_p, ci]
+                    lib.eng_cap_levels.restype, lib.eng_cap_levels.argtypes = None, [vp, vp]
         print(f"dsp: native {name} (version {lib.bsdsp_version()}, tape {lib.btdsp_version() if hasattr(lib, 'btdsp_version') else 0})", flush=True)
         _native[0] = lib
     except Exception as e:
@@ -1289,9 +1292,18 @@ class NativeEngine:
         n = int(self.tape["tracks"][track]["end"])
         return self.tape_views[track][:n].copy() if n > 0 else None
 
-    def set_capture(self, dev, mode):
+    def set_capture(self, dev, mode, fmt="S16_LE", rate=0):
         if self.has_capture:
+            if hasattr(self.lib, "eng_cap_config"):
+                self.lib.eng_cap_config(self.h, fmt.encode(), int(rate))
             self.lib.eng_cap_open(self.h, (dev or "").encode(), int(mode))
+
+    def capture_levels(self):
+        """Raw peak of each input channel since the last call: [ch1, ch2, channels, rate, format code]."""
+        o = np.zeros(5, np.float64)
+        if self.has_capture and hasattr(self.lib, "eng_cap_levels"):
+            self.lib.eng_cap_levels(self.h, o.ctypes.data)
+        return o
 
     def set_mic(self, on):
         if self.has_tape:
@@ -1853,30 +1865,98 @@ def capture_devices(n):
 
 
 def capture_stream_info(n, dev):
-    """(formats, channels, rates) the device says it can record, from /proc/asound/cardN/streamX
-    (USB audio: stream X is device X). Empty lists if it can't be read."""
-    fmts, chans, rates = [], [], []
+    """Formats, channel counts and rates the device can record, from the "Capture:" block of
+    /proc/asound/cardN/streamX (USB audio: stream X is device X). Empty lists when unknown."""
+    info = {"formats": [], "channels": [], "rates": [], "ranges": []}
     try:
         with open(os.path.join(os.path.dirname(ASOUND_CARDS), f"card{n}", f"stream{dev}")) as f:
             txt = f.read()
     except OSError:
-        return fmts, chans, rates
-    cap = txt.split("Capture:", 1)[1] if "Capture:" in txt else ""
-    cap = cap.split("Playback:", 1)[0]
-    for ln in cap.splitlines():
+        return info
+    i = txt.find("Capture:")
+    if i < 0:
+        return info
+    block = txt[i:]
+    j = block.find("Playback:")
+    if j > 0:
+        block = block[:j]
+    for ln in block.splitlines():
         ln = ln.strip()
         if ln.startswith("Format:"):
-            fmts += [x.strip() for x in ln[7:].split(",") if x.strip() and x.strip() not in fmts]
+            for fm in ln.split(":", 1)[1].replace(",", " ").split():
+                if fm not in info["formats"]:
+                    info["formats"].append(fm)
         elif ln.startswith("Channels:"):
-            c = ln[9:].strip()
-            if c.isdigit() and int(c) not in chans:
-                chans.append(int(c))
+            c = ln.split(":", 1)[1].strip()
+            if c.isdigit() and int(c) not in info["channels"]:
+                info["channels"].append(int(c))
         elif ln.startswith("Rates:"):
-            for x in ln[6:].split(","):
-                x = x.strip()
-                if x.isdigit() and int(x) not in rates:
-                    rates.append(int(x))
-    return fmts, chans, rates
+            v = ln.split(":", 1)[1]
+            rng = re.match(r"\s*(\d+)\s*-\s*(\d+)", v)
+            if rng:
+                info["ranges"].append((int(rng.group(1)), int(rng.group(2))))
+            else:
+                for r in re.findall(r"\d+", v):
+                    if int(r) not in info["rates"]:
+                        info["rates"].append(int(r))
+    return info
+
+
+def pick_rate(info):
+    """48000 if the device has it, otherwise the first rate it lists; the app rate when unknown."""
+    rates, ranges = info.get("rates", []), info.get("ranges", [])
+    if 48000 in rates or any(a <= 48000 <= b for a, b in ranges):
+        return 48000
+    if rates:
+        return rates[0]
+    if ranges:
+        return ranges[0][1]
+    return SR
+
+
+def pick_format(info):
+    """The device's own best capture format (some USB inputs only send real audio in their 24-bit mode)."""
+    fm = info.get("formats", [])
+    for f in ("S24_3LE", "S32_LE", "S24_LE", "S16_LE"):
+        if f in fm:
+            return f
+    return "S16_LE"
+
+
+def usb_mixer_setup(n):
+    """Log the USB card's mixer, and switch on any capture switch that is off or a capture volume left at 0%.
+    (A computer often does this by itself; on the Brick nothing does, and the input then sends silence.)"""
+    exe = shutil.which("amixer")
+    if not exe or n is None:
+        return
+    try:
+        out = subprocess.run([exe, "-c", str(n), "scontents"], capture_output=True, text=True, timeout=3).stdout
+    except Exception as e:
+        print(f"tape: amixer -c {n}: {e}", flush=True)
+        return
+    print(f"tape: mixer card {n} (amixer -c {n} scontents):\n" + out.rstrip(), flush=True)
+    for blk in re.split(r"(?m)^Simple mixer control ", out)[1:]:
+        lines = blk.splitlines()
+        m = re.match(r"'(.+)',(\d+)", lines[0])
+        if not m:
+            continue
+        name = f"{m.group(1)},{m.group(2)}"
+        caps = next((ln.split(":", 1)[1].split() for ln in lines if "Capabilities:" in ln), [])
+        vals = [ln.strip() for ln in lines if "Capture" in ln and "[" in ln and "Limits" not in ln]
+        todo = []
+        if "cswitch" in caps and any("[off]" in v for v in vals):
+            todo.append(["cap"])
+        if any(c.startswith("cvolume") for c in caps) and vals and all("[0%]" in v for v in vals):
+            # unity gain (0 dB) when the control has a dB scale: no extra analogue gain, so no extra noise
+            todo.append(["capture", "0dB"] if any("dB]" in v for v in vals) else ["capture", "80%"])
+        for args in todo:
+            r = subprocess.run([exe, "-c", str(n), "-q", "sset", name] + args, capture_output=True, text=True, timeout=3)
+            if r.returncode != 0 and args[-1] == "0dB":
+                args = ["capture", "80%"]
+                r = subprocess.run([exe, "-c", str(n), "-q", "sset", name] + args, capture_output=True, text=True,
+                                   timeout=3)
+            print(f"tape: mixer card {n} '{name}' {' '.join(args)}: " + ("ok" if r.returncode == 0 else r.stderr.strip()),
+                  flush=True)
 
 
 def capture_hw_params(n, dev):
@@ -2859,6 +2939,11 @@ class App:
         self.recorder.out = self.audio
         self.recorder.engine = self.engine
         self.recorder.set_source(self.ui["rec_source"], self.ui["rec_channel"])
+        self._mixer_done = set()
+        if use_alsa_tools():
+            for cid, _ in capture_cards():
+                cn = card_index(cid)
+                print(f"tape: card {cn} ({cid}) recording devices {capture_devices(cn)}", flush=True)
         self.tape_track = 0
         self.tape_saved = {}
         self.tape_writer = None
@@ -2967,7 +3052,7 @@ class App:
     # ---------- settings (app-wide, not per project)
     def load_settings(self):
         self.ui = dict(display=0, project="DEFAULT", latency=0, ccmap=dict(DEFAULT_CCMAP),
-                       rec_source="internal", rec_channel=2, volume=1.0, loop_offset=0, rec_dev={})
+                       rec_source="internal", rec_channel=2, volume=1.0, loop_offset=0, rec_dev={}, rec_input=0)
         try:
             with open(SETTINGS_FILE) as f:
                 d = json.load(f)
@@ -3657,7 +3742,7 @@ class App:
             return self.source_label(self.ui["rec_source"])
         if p.kind == "usbin":
             if self.ui["rec_source"] == "internal":
-                return "-"
+                return "Input 1"
             devs, i = self.usb_inputs()
             return f"Input {i + 1}" + ("" if len(devs) > 1 else " (only)")
         if p.scope == "ui":
@@ -4004,20 +4089,25 @@ class App:
                 return
             have = capture_devices(n)
             want = self.ui["rec_dev"].get(src)
-            d = want if want in have else (0 if 0 in have else have[0])
+            d = want if want in have else have[0]
             if want is not None and want not in have:
                 print(f"tape: input {src} has no recording device {want} now (has {have}): using device {d}", flush=True)
             idx = have.index(d)
-            fmts, chans, rates = capture_stream_info(n, d)
-            # the engine runs at SR; plughw converts if the device can't do it (48000 is used when it can)
-            rate_note = (f"{SR} Hz" if (not rates or SR in rates)
-                         else f"device rates {rates}: ALSA converts {rates[0] if rates else '?'} -> {SR} Hz")
+            self.ui["rec_input"] = d
+            if n not in self._mixer_done:           # once per card: capture switches on, volumes off 0%
+                self._mixer_done.add(n)
+                usb_mixer_setup(n)
+            info = capture_stream_info(n, d)
+            fmts, chans, rates = info["formats"], info["channels"], info["rates"] + [f"{a}-{b}" for a, b in info["ranges"]]
+            rate, fmt = pick_rate(info), pick_format(info)
+            rate_note = f"{rate} Hz" + ("" if rate == SR else f" (converted to {SR} Hz in the engine)")
             devs = [f"plughw:CARD={src},DEV={d}", f"hw:CARD={src},DEV={d}", f"plughw:{n},{d}", f"hw:{n},{d}"]
-            e.set_capture("\n".join(devs), 2)
-            self.cap_info = dict(card=n, cid=src, dev=d, idx=idx, count=len(have))
+            e.set_capture("\n".join(devs), 2, fmt, rate)
+            self.cap_info = dict(card=n, cid=src, dev=d, idx=idx, count=len(have), t=time.time())
             self._hw_logged = False
-            print(f"tape: input {src} (card {n}) device {d} = Input {idx + 1} of {len(have)}, stereo, {rate_note}"
-                  f" [formats {fmts or '?'}, channels {chans or '?'}, rates {rates or '?'}]", flush=True)
+            self._lvl_logged = False
+            print(f"tape: input {src} (card {n}) device {d} = Input {idx + 1} of {len(have)}, {fmt}, stereo, {rate_note}"
+                  f" [device formats {fmts or '?'}, channels {chans or '?'}, rates {rates or '?'}]", flush=True)
         else:
             e.set_capture("", 0)
             on = src == "internal" and ON_DEVICE
@@ -4031,8 +4121,8 @@ class App:
         src = self.ui["rec_source"]
         n = card_index(src) if use_alsa_tools() else None
         devs = capture_devices(n) if n is not None else [0]
-        want = self.ui["rec_dev"].get(src, 0)
-        return devs, (devs.index(want) if want in devs else (devs.index(0) if 0 in devs else 0))
+        want = self.ui["rec_dev"].get(src, devs[0])
+        return devs, (devs.index(want) if want in devs else 0)
 
     def switch_input(self):
         """Change the input with a short fade: mute the input (the engine fades it in about 30 ms), reopen,
@@ -4059,10 +4149,24 @@ class App:
                 self._switch = None
 
     def log_capture_open(self):
-        """Once the USB input is open: card, device, format, channels, rate, period and buffer in log.txt."""
+        """Once the USB input is open: card, device, format, channels, rate, period and buffer in log.txt; and
+        2 s later the real level of each channel (dBFS, or "silent (all 0)")."""
         info = getattr(self, "cap_info", None)
-        if info is None or getattr(self, "_hw_logged", True) or not self.engine.tape.get("cap_open"):
+        if info is None or not self.engine.tape.get("cap_open"):
             return
+        if getattr(self, "_hw_logged", True) and not getattr(self, "_lvl_logged", True):
+            if time.time() - info.get("t_open", time.time()) >= 2.0:
+                self._lvl_logged = True
+                lv = self.engine.capture_levels()
+                ch = max(1, int(lv[2]))
+                txt = ", ".join(f"ch{i + 1} {20 * math.log10(lv[i]):.0f} dBFS" if lv[i] > 0 else f"ch{i + 1} silent (all 0)"
+                                for i in range(min(2, ch)))
+                print(f"tape: input level after 2 s, card {info['card']} device {info['dev']}: {txt}", flush=True)
+            return
+        if getattr(self, "_hw_logged", True):
+            return
+        info["t_open"] = time.time()
+        self.engine.capture_levels()            # start the 2 s window clean
         self._hw_logged = True
         hw = capture_hw_params(info["card"], info["dev"])
         tp = self.engine.tape

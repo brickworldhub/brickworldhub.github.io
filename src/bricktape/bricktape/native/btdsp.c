@@ -501,6 +501,9 @@ typedef struct {
     volatile double cap_reads;
     volatile float cap_pk;
     volatile int cap_ch;
+    char cap_fmt_req[16];            /* format / rate the app asks for (the device's own best), 0 = default */
+    volatile int cap_rate_req, cap_rate, cap_fmt;
+    volatile float cap_pkc[2];       /* raw peak per channel since the app last read it */
 #endif
 } Eng;
 
@@ -873,7 +876,7 @@ static int tape_process(Eng *g, int n) {
      * changes the input device, so the change never clicks */
     {
         float g0 = g->gin_s, tg_ = g->tp[TP_INGAIN];
-        float stp = 0.1f * (tg_ > 1.0f ? tg_ : 1.0f);
+        float stp = 0.13f * (tg_ > 1.0f ? tg_ : 1.0f);   /* about 20 ms from full to silent */
         float g1 = tg_ > g0 ? fminf(tg_, g0 + stp) : fmaxf(tg_, g0 - stp);
         g->gin_s = g1;
         for (int k = 0; k < n; k++) {
@@ -1380,16 +1383,42 @@ static void *writer(void *arg) {
 
 
 /* ---- capture thread: a USB interface / mic / synth into the input ring (and the REC page's tap) */
+/* capture formats: ALSA codes and decoding (the device's own best one; some USB inputs only send real audio in
+ * their 24-bit mode) */
+static int fmt_code(const char *f) {
+    if (!strcmp(f, "S24_3LE")) return 32;
+    if (!strcmp(f, "S32_LE")) return 10;
+    if (!strcmp(f, "S24_LE")) return 6;
+    return 2;
+}
+static const char *fmt_name(int c) { return c == 32 ? "S24_3LE" : c == 10 ? "S32_LE" : c == 6 ? "S24_LE" : "S16_LE"; }
+static float pcm_sample(const unsigned char *b, int fmt, long i) {
+    if (fmt == 32) {
+        const unsigned char *q = b + 3 * i;
+        int v = q[0] | (q[1] << 8) | (q[2] << 16);
+        if (v & 0x800000) v -= 0x1000000;
+        return v / 8388608.0f;
+    }
+    if (fmt == 6) {
+        int v = ((const int *)b)[i] & 0xFFFFFF;
+        if (v & 0x800000) v -= 0x1000000;
+        return v / 8388608.0f;
+    }
+    if (fmt == 10) return ((const int *)b)[i] / 2147483648.0f;
+    return ((const short *)b)[i] / 32768.0f;
+}
+
 static void *capture(void *arg) {
     Eng *g = (Eng *)arg;
     struct sched_param sp;
     sp.sched_priority = 52;
     pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp);
     void *pcm = NULL;
-    int gen = -1, per = 128, chn = 2;
+    int gen = -1, per = 128, chn = 2, cfmt = 2;
     char devs[512] = "", last_err[160] = "";
-    static short buf[4096 * 2];
-    static float st[4096 * 2], mono[4096];
+    static unsigned char buf[4096 * 2 * 4];
+    static float st[4096 * 2], mono[4096], rs[8192 * 2 + 8], rsm[8192 + 4];
+    double rs_t = 0; float rs_l = 0, rs_r = 0;
     while (g->cap_run) {
         if (gen != g->cap_gen) {
             if (pcm) { A.drop(pcm); A.close(pcm); pcm = NULL; fprintf(stderr, "capture: closed\n"); }
@@ -1401,27 +1430,41 @@ static void *capture(void *arg) {
         }
         if (!devs[0]) { usleep(50000); continue; }
         if (!pcm) {
-            /* each device name in turn, stereo then mono, 6 ms periods */
-            char list[512], *save = NULL;
+            /* each device name in turn; the device's own best format first (then S16), stereo then mono,
+             * at the rate the app picked from what the device supports; 6 ms periods */
+            char list[512], *save = NULL, freq[16];
+            int rate = g->cap_rate_req > 0 ? g->cap_rate_req : g->sr;
+            LOCK(g->qlock);
+            strncpy(freq, g->cap_fmt_req, sizeof(freq) - 1); freq[sizeof(freq) - 1] = 0;
+            UNLOCK(g->qlock);
+            int fcode = fmt_code(freq);
+            int fmts[2] = {fcode, 2}, nf = fcode == 2 ? 1 : 2;
             strncpy(list, devs, sizeof(list) - 1); list[sizeof(list) - 1] = 0;
             for (char *dev = strtok_r(list, "\n", &save); dev && !pcm; dev = strtok_r(NULL, "\n", &save)) {
-                for (int c = 2; c >= 1 && !pcm; c--) {
-                    void *p = NULL;
-                    int err = A.open(&p, dev, 1, 0);                      /* capture, blocking */
-                    if (err < 0) { snprintf(g->cap_err, sizeof(g->cap_err), "%s: %s", dev, A.strerror(err)); break; }
-                    err = A.setp(p, 2, 3, (unsigned)c, (unsigned)g->sr, 1, 6000);
-                    if (err < 0) {
-                        snprintf(g->cap_err, sizeof(g->cap_err), "%s %dch: %s", dev, c, A.strerror(err));
-                        A.close(p);
-                        continue;
+                for (int fi = 0; fi < nf && !pcm; fi++) {
+                    int opened = 1;
+                    for (int c = 2; c >= 1 && !pcm; c--) {
+                        void *p = NULL;
+                        int err = A.open(&p, dev, 1, 0);                      /* capture, blocking */
+                        if (err < 0) { snprintf(g->cap_err, sizeof(g->cap_err), "%s: %s", dev, A.strerror(err)); opened = 0; break; }
+                        err = A.setp(p, fmts[fi], 3, (unsigned)c, (unsigned)rate, 1, 6000);
+                        if (err < 0) {
+                            snprintf(g->cap_err, sizeof(g->cap_err), "%s %s %dch %dHz: %s", dev, fmt_name(fmts[fi]), c, rate, A.strerror(err));
+                            A.close(p);
+                            continue;
+                        }
+                        unsigned long bsz = 0, p_ = 0;
+                        A.getp(p, &bsz, &p_);
+                        per = (p_ > 0 && p_ <= 4096) ? (int)p_ : 128;
+                        chn = c; pcm = p; cfmt = fmts[fi];
+                        g->cap_rate = rate; g->cap_fmt = cfmt;
+                        strncpy(g->cap_used, dev, sizeof(g->cap_used) - 1);
+                        A.start(pcm);
+                        rs_t = 0; rs_l = rs_r = 0;
+                        fprintf(stderr, "capture: opened %s, %s, %d ch, %d Hz%s, period %d, buffer %lu\n", dev, fmt_name(cfmt), c,
+                                rate, rate != g->sr ? " (converted to the app rate in the engine)" : "", per, bsz);
                     }
-                    unsigned long bsz = 0, p_ = 0;
-                    A.getp(p, &bsz, &p_);
-                    per = (p_ > 0 && p_ <= 4096) ? (int)p_ : 128;
-                    chn = c; pcm = p;
-                    strncpy(g->cap_used, dev, sizeof(g->cap_used) - 1);
-                    A.start(pcm);
-                    fprintf(stderr, "capture: opened %s, %d ch, period %d, buffer %lu\n", dev, c, per, bsz);
+                    if (!opened) break;
                 }
             }
             if (!pcm) {
@@ -1446,20 +1489,44 @@ static void *capture(void *arg) {
         if (r == 0) continue;
         g->cap_reads += 1;
         int mode = g->cap_mode;
-        float pk = 0;
+        float pk = 0, pc0 = g->cap_pkc[0], pc1 = g->cap_pkc[1];
         for (long k = 0; k < r; k++) {
             float l, rr;
-            if (chn == 2) { l = buf[2 * k] / 32768.0f; rr = buf[2 * k + 1] / 32768.0f; }
-            else l = rr = buf[k] / 32768.0f;
+            if (chn == 2) { l = pcm_sample(buf, cfmt, 2 * k); rr = pcm_sample(buf, cfmt, 2 * k + 1); }
+            else l = rr = pcm_sample(buf, cfmt, k);
             if (fabsf(l) > pk) pk = fabsf(l);
             if (fabsf(rr) > pk) pk = fabsf(rr);
+            if (fabsf(l) > pc0) pc0 = fabsf(l);
+            if (fabsf(rr) > pc1) pc1 = fabsf(rr);
             if (mode == 0) { st[2 * k] = st[2 * k + 1] = l; mono[k] = l; }
             else if (mode == 1) { st[2 * k] = st[2 * k + 1] = rr; mono[k] = rr; }
             else { st[2 * k] = l; st[2 * k + 1] = rr; mono[k] = 0.5f * (l + rr); }
         }
+        g->cap_pkc[0] = pc0; g->cap_pkc[1] = pc1;
         g->cap_pk = fmaxf(g->cap_pk * 0.97f, pk);
-        ring_push(g, st, (int)r);
-        if (g->tap_on) tap_push(g, mono, (int)r);
+        int rate = g->cap_rate;
+        if (rate > 0 && rate != g->sr) {
+            /* the device runs at another rate: linear conversion to the app rate here; the drift correction
+             * after the ring stays as it is */
+            double step = (double)rate / (double)g->sr;
+            int m = 0;
+            for (long k = 0; k < r; k++) {
+                float cl = st[2 * k], cr = st[2 * k + 1];
+                while (rs_t <= 1.0 && m < 8192) {
+                    float f = (float)rs_t;
+                    rs[2 * m] = rs_l + (cl - rs_l) * f; rs[2 * m + 1] = rs_r + (cr - rs_r) * f;
+                    rsm[m] = 0.5f * (rs[2 * m] + rs[2 * m + 1]);
+                    if (mode == 0) rsm[m] = rs[2 * m]; else if (mode == 1) rsm[m] = rs[2 * m + 1];
+                    m++; rs_t += step;
+                }
+                rs_t -= 1.0; rs_l = cl; rs_r = cr;
+            }
+            ring_push(g, rs, m);
+            if (g->tap_on) tap_push(g, rsm, m);
+        } else {
+            ring_push(g, st, (int)r);
+            if (g->tap_on) tap_push(g, mono, (int)r);
+        }
     }
     if (pcm) { A.drop(pcm); A.close(pcm); }
     g->cap_open = 0;
@@ -1481,6 +1548,18 @@ API int eng_cap_open(Eng *g, const char *dev, int mode) {
     return 1;
 }
 API const char *eng_cap_error(Eng *g) { return g->cap_err; }
+/* Format ("S24_3LE", "S16_LE"...) and rate for the next opening (call before eng_cap_open). */
+API void eng_cap_config(Eng *g, const char *fmt, int rate) {
+    LOCK(g->qlock);
+    strncpy(g->cap_fmt_req, fmt ? fmt : "", sizeof(g->cap_fmt_req) - 1);
+    g->cap_rate_req = rate;
+    UNLOCK(g->qlock);
+}
+/* Raw peak of each input channel since the last call, then reset: [ch1, ch2, channels, rate, format code]. */
+API void eng_cap_levels(Eng *g, double *o) {
+    o[0] = g->cap_pkc[0]; o[1] = g->cap_pkc[1]; o[2] = g->cap_ch; o[3] = g->cap_rate; o[4] = g->cap_fmt;
+    g->cap_pkc[0] = g->cap_pkc[1] = 0;
+}
 
 /* devs: newline-separated ALSA device names to try in order. frames: wanted buffer size. */
 API int eng_start(Eng *g, const char *devs, int frames) {
