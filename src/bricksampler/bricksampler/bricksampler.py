@@ -54,7 +54,7 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import pygame
 
 APP_NAME = "BRICKSAMPLER"
-VERSION = "2.0.2"
+VERSION = "2.0.3"
 # 48 kHz on the Brick: the system mixer and the codec run at 48k, and the speaker and mic share one
 # clock, so asking the mic for 44.1k while playback runs at 48k can stall the capture.
 SR = 48000 if os.path.isdir("/userdata/roms") else 44100
@@ -3074,7 +3074,7 @@ class App:
     # ---------- settings (app-wide, not per project)
     def load_settings(self):
         self.ui = dict(display=0, project="DEFAULT", latency=0, ccmap=dict(DEFAULT_CCMAP),
-                       rec_source="internal", rec_channel=2, rec_input=0, volume=1.0)
+                       rec_source="internal", rec_channel=2, rec_input=0, rec_inputs={}, volume=1.0)
         try:
             with open(SETTINGS_FILE) as f:
                 d = json.load(f)
@@ -3093,6 +3093,8 @@ class App:
             self.ui["rec_input"] = max(0, int(self.ui["rec_input"]))
         except (TypeError, ValueError):
             self.ui["rec_input"] = 0
+        ri = self.ui.get("rec_inputs")
+        self.ui["rec_inputs"] = {str(k): int(v) for k, v in ri.items() if str(v).isdigit()} if isinstance(ri, dict) else {}
         cm = self.ui["ccmap"] if isinstance(self.ui["ccmap"], dict) else {}
         self.ui["ccmap"] = {str(int(c)): k for c, k in cm.items()
                             if str(c).isdigit() and 0 <= int(c) < 128 and k in CC_TARGETS}
@@ -3874,7 +3876,9 @@ class App:
             if new != cur:
                 self.ui["rec_source"] = new
                 devs = capture_devices(new) if new != "internal" else []
-                self.ui["rec_input"] = devs[0] if devs else 0
+                # each card keeps the input last chosen on it (e.g. Cubilux back on Input 2)
+                last = self.ui["rec_inputs"].get(new)
+                self.ui["rec_input"] = last if last in devs else (devs[0] if devs else 0)
             return
         if p.kind == "usbinput":
             src = self.ui["rec_source"]
@@ -3883,6 +3887,7 @@ class App:
                 cur = self.ui["rec_input"]
                 i = devs.index(cur) if cur in devs else 0
                 self.ui["rec_input"] = devs[clamp(i + direction, 0, len(devs) - 1)]
+                self.ui["rec_inputs"][src] = self.ui["rec_input"]
             return
         d = self.target(p)
         v = d[p.key]
