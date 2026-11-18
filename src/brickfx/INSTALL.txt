@@ -1,4 +1,4 @@
-BrickFX 1.0.0 - stereo multi-effect for the TrimUI Brick (KNULLI)
+BrickFX 1.0.2 - stereo multi-effect for the TrimUI Brick (KNULLI)
 
 1. Copy everything in this folder (BrickFX.sh, the .keys files and the brickfx
    folder) to roms/ports on the SD card.
@@ -7,7 +7,8 @@ BrickFX 1.0.0 - stereo multi-effect for the TrimUI Brick (KNULLI)
    audio interface or headphones.
 3. Start BrickFX from Ports. The first start unpacks NumPy (a few seconds).
 
-The I/O page shows the USB input and its status. Hold SELECT for the
+The I/O page shows the USB input and its status. If your USB card has more
+than one input (for example mic in and line in), pick it with USB input. Hold SELECT for the
 controls. SELECT + START closes the app.
 If something goes wrong, brickfx/log.txt says why.
 

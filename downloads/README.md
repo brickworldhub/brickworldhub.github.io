@@ -8,6 +8,6 @@ Free apps for the TrimUI Brick (KNULLI). Each zip is ready to copy to `roms/port
 | BrickTape – 4-track tape recorder | 1.1.2 | [bricktape/BrickTape_v1.1.2.zip](bricktape/BrickTape_v1.1.2.zip) · [manual (PDF)](bricktape/BrickTape_Manual_v1.1.2.pdf) |
 | BrickLooper – 5-track loop station | 1.5.2 | [bricklooper/BrickLooper_v1.5.2.zip](bricklooper/BrickLooper_v1.5.2.zip) · [manual (PDF)](bricklooper/BrickLooper_Manual_v1.5.2.pdf) |
 | BrickAmbientFX (Sarta Edition) – ambient stereo multi-effect | 1.0.0 | [brickambientfx/BrickAmbientFX_v1.0.0.zip](brickambientfx/BrickAmbientFX_v1.0.0.zip) · [manual (PDF)](brickambientfx/BrickAmbientFX_Manual_v1.0.0.pdf) |
-| BrickFX – stereo multi-effect | 1.0.0 | [brickfx/BrickFX_v1.0.0.zip](brickfx/BrickFX_v1.0.0.zip) · [manual (PDF)](brickfx/BrickFX_v1.0.0_manual.pdf) |
+| BrickFX – stereo multi-effect | 1.0.2 | [brickfx/BrickFX_v1.0.2.zip](brickfx/BrickFX_v1.0.2.zip) · [manual (PDF)](brickfx/BrickFX_v1.0.2_manual.pdf) |
 
 Source code, easy to read online: [`src/`](../src/).
