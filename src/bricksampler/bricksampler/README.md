@@ -1,4 +1,4 @@
-# BrickSampler 2.0.1
+# BrickSampler 2.0.2
 
 A sampler for the TrimUI Brick running KNULLI. Play it from a USB MIDI keyboard, record from the built-in mic or any USB audio device, shape the sound with FX and build Wavestation-style wave sequences from your own samples.
 

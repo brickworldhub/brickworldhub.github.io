@@ -54,7 +54,7 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import pygame
 
 APP_NAME = "BRICKSAMPLER"
-VERSION = "2.0.1"
+VERSION = "2.0.2"
 # 48 kHz on the Brick: the system mixer and the codec run at 48k, and the speaker and mic share one
 # clock, so asking the mic for 44.1k while playback runs at 48k can stall the capture.
 SR = 48000 if os.path.isdir("/userdata/roms") else 44100
@@ -1833,6 +1833,75 @@ def pick_rate(info):
     return SR
 
 
+CAPTURE_FORMATS = {"S16_LE": 2, "S24_3LE": 3, "S24_LE": 4, "S32_LE": 4}
+
+
+def pick_format(info):
+    """The device's own best capture format (some USB inputs only send real audio in their 24-bit mode)."""
+    fm = info.get("formats", [])
+    for f in ("S24_3LE", "S32_LE", "S24_LE", "S16_LE"):
+        if f in fm:
+            return f
+    return "S16_LE"
+
+
+def decode_pcm(data, fmt):
+    """Raw little-endian PCM bytes -> float32 -1..1 (interleaved)."""
+    if fmt == "S16_LE":
+        return np.frombuffer(data, "<i2").astype(np.float32) / 32768.0
+    if fmt == "S24_3LE":
+        b = np.frombuffer(data, np.uint8).reshape(-1, 3).astype(np.int32)
+        v = b[:, 0] | (b[:, 1] << 8) | (b[:, 2] << 16)
+        v = np.where(v & 0x800000, v - 0x1000000, v)
+        return v.astype(np.float32) / 8388608.0
+    if fmt == "S24_LE":
+        v = np.frombuffer(data, "<i4") & 0xFFFFFF
+        v = np.where(v & 0x800000, v - 0x1000000, v)
+        return v.astype(np.float32) / 8388608.0
+    return np.frombuffer(data, "<i4").astype(np.float32) / 2147483648.0
+
+
+def usb_mixer_setup(cid):
+    """Log the USB card's mixer and switch on any capture switch that is off, or a capture volume left at 0.
+    (A computer often does this by itself; on the Brick nothing does, and the input then sends silence.)"""
+    exe = shutil.which("amixer")
+    n = card_number(cid)
+    if not exe or n is None:
+        return
+    try:
+        out = subprocess.run([exe, "-c", str(n), "scontents"], capture_output=True, text=True, timeout=3).stdout
+    except Exception as e:
+        print(f"rec: amixer -c {n}: {e}", flush=True)
+        return
+    blocks = re.split(r"(?m)^Simple mixer control ", out)
+    for blk in blocks[1:]:
+        lines = blk.splitlines()
+        m = re.match(r"'(.+)',(\d+)", lines[0])
+        if not m:
+            continue
+        name = f"{m.group(1)},{m.group(2)}"
+        caps = next((ln.split(":", 1)[1].split() for ln in lines if "Capabilities:" in ln), [])
+        vals = [ln.strip() for ln in lines if "Capture" in ln and "[" in ln and "Limits" not in ln]
+        play = [ln.strip() for ln in lines if "Playback" in ln and "[" in ln and "Limits" not in ln]
+        print(f"rec: mixer card {n} '{name}' [{' '.join(caps)}]" + (f" capture: {' | '.join(vals)}" if vals else "")
+              + (f" playback: {' | '.join(play)}" if play else ""), flush=True)
+        todo = []
+        if "cswitch" in caps and any("[off]" in v for v in vals):
+            todo.append(["cap"])
+        if any(c.startswith("cvolume") for c in caps) and vals and all("[0%]" in v for v in vals):
+            # unity gain (0 dB) when the control has a dB scale: no extra analogue gain, so no extra noise
+            todo.append(["capture", "0dB"] if any("dB]" in v for v in vals) else ["capture", "80%"])
+        for args in todo:
+            r = subprocess.run([exe, "-c", str(n), "-q", "sset", name] + args, capture_output=True, text=True,
+                               timeout=3)
+            if r.returncode != 0 and args[-1] == "0dB":
+                args = ["capture", "80%"]
+                r = subprocess.run([exe, "-c", str(n), "-q", "sset", name] + args, capture_output=True, text=True,
+                                   timeout=3)
+            print(f"rec: mixer card {n} '{name}' {' '.join(args)}: " + ("ok" if r.returncode == 0 else r.stderr.strip()),
+                  flush=True)
+
+
 class Resampler:
     """Linear rate conversion for a running stream (only used when the device can't do the app's rate)."""
 
@@ -1875,6 +1944,7 @@ class Recorder:
         self.input_dev = 0          # USB: the card's capture device asked for (ALSA DEV number)
         self.open_dev = None        # the device really opened (may fall back to the first one)
         self.rate = SR
+        self.mixer_done = set()
 
     @property
     def usb(self):
@@ -1948,19 +2018,26 @@ class Recorder:
                 print(f"rec: {self.source} device {dev} can do {' '.join(info['formats'])}, "
                       f"{'/'.join(map(str, sorted(set(info['channels']))))} ch, rates "
                       f"{info['rates'] or info['ranges']} -> opening at {self.rate}", flush=True)
+            if self.source not in self.mixer_done:
+                usb_mixer_setup(self.source)
+                self.mixer_done.add(self.source)
             d = f"CARD={self.source},DEV={dev}"
-            return [(f"plughw:{d}", 2), (f"plughw:{d}", 1), (f"hw:{d}", 2)]
+            fmt = pick_format(info)
+            c = [(f"plughw:{d}", 2, fmt), (f"plughw:{d}", 1, fmt)]
+            if fmt != "S16_LE":
+                c += [(f"plughw:{d}", 2, "S16_LE"), (f"plughw:{d}", 1, "S16_LE")]
+            return c + [(f"hw:{d}", 2, fmt)]
         self.rate = SR
         c = [("hw:0,0", 1), ("plughw:0,0", 1), ("hw:0,0", 2)]
         if ALSA_CAPTURE not in ("default", "hw:0,0", "plughw:0,0"):
             c.insert(0, (ALSA_CAPTURE, 1))
         return c
 
-    def _try_arecord(self, dev, ch, wait=1.0):
+    def _try_arecord(self, dev, ch, wait=1.0, fmt="S16_LE"):
         """Start arecord on one device. Returns the process if audio arrives within `wait` s, else None."""
         exe = shutil.which("arecord")
         rate = self.rate
-        cmd = [exe, "-q", "-v", "-D", dev, "-t", "raw", "-f", "S16_LE", "-c", str(ch), "-r", str(rate)]
+        cmd = [exe, "-q", "-v", "-D", dev, "-t", "raw", "-f", fmt, "-c", str(ch), "-r", str(rate)]
         print("mic:", " ".join(cmd), flush=True)
         try:
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
@@ -1968,8 +2045,9 @@ class Recorder:
             print("mic:", e, flush=True)
             return None
         got = threading.Event()
-        frame = 2 * ch
+        frame = CAPTURE_FORMATS.get(fmt, 2) * ch
         conv = Resampler(rate, SR) if rate != SR else None
+        meter = {"t0": None, "peak": np.zeros(ch), "n": 0, "done": False}
         fade = [int(0.02 * SR)]          # short fade-in after (re)opening, so a new input never starts with a click
         hw = {}
 
@@ -2013,7 +2091,19 @@ class Recorder:
                 usable = len(data) - len(data) % frame
                 rest = data[usable:]
                 if usable:
-                    x = np.frombuffer(data[:usable], "<i2").astype(np.float32) / 32768.0
+                    x = decode_pcm(data[:usable], fmt)
+                    if not meter["done"]:
+                        # what really comes in during the first 2 s, per channel, before anything else
+                        if meter["t0"] is None:
+                            meter["t0"] = time.time()
+                        meter["peak"] = np.maximum(meter["peak"], np.abs(x.reshape(-1, ch)).max(axis=0))
+                        meter["n"] += len(x) // ch
+                        if time.time() - meter["t0"] > 2.0:
+                            meter["done"] = True
+                            pk = ", ".join(f"ch{i + 1} {20 * np.log10(v):.0f} dBFS" if v > 0 else f"ch{i + 1} silent (all 0)"
+                                           for i, v in enumerate(meter["peak"]))
+                            print(f"rec: input level, first 2 s from {dev} ({fmt}, {meter['n']} frames): {pk}",
+                                  flush=True)
                     if ch == 2:
                         x2 = x.reshape(-1, 2)
                         c = self.channel if self.usb else 2
@@ -2056,8 +2146,9 @@ class Recorder:
         if not shutil.which("arecord"):
             self.error = "arecord not found"
             return False
-        for dev, ch in self._capture_candidates():
-            proc = self._try_arecord(dev, ch, wait)
+        for c in self._capture_candidates():
+            dev, ch = c[0], c[1]
+            proc = self._try_arecord(dev, ch, wait, c[2] if len(c) > 2 else "S16_LE")
             if proc:
                 self.dev, self.device_name, self.error = proc, f"{dev} {ch}ch", None
                 return True
