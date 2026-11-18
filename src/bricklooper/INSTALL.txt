@@ -1,4 +1,4 @@
-BrickLooper v1.5.0 - TrimUI Brick (KNULLI)
+BrickLooper v1.5.2 - TrimUI Brick (KNULLI)
 
 1. Copy everything in this folder (BrickLooper.sh, the .keys files and the
    bricklooper folder) to roms/ports on the SD card.
@@ -8,8 +8,9 @@ It sits next to BrickSampler without touching it: separate folder, separate
 projects.
 
 Input: a USB interface, USB mic or synth with USB audio (plug it in, then
-choose it in SOURCE on the LOOP page), or the built-in mic. With the built-in
-mic the sound stops while you record (a limit of the Brick).
+choose it in SOURCE on the LOOP page; if it has more than one input, for
+example mic in and line in, pick it in USB INPUT), or the built-in mic.
+With the built-in mic the sound stops while you record (a limit of the Brick).
 
 Hold SELECT for the controls of the page you are on. MENU + START closes the app.
 If something goes wrong, bricklooper/log.txt says why.

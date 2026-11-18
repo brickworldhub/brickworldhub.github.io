@@ -38,6 +38,7 @@ A, X and B always act on the current track (the highlighted number), even when t
 Settings on the LOOP page:
 
 - **Source**: Internal mic, or USB: any USB interface, USB mic or synth with USB audio (USB 1, USB 2 when more than one is plugged in). It is opened as soon as it is plugged in.
+- **USB input**: which input of the USB device you record from (Input 1, Input 2...). Some adapters have more than one, for example a mic in and a line in. With one input it stays on Input 1. Each USB device remembers its choice. When a USB device opens, BrickLooper switches on its recording input in the device mixer if it is off (some line inputs start off and silent on the Brick).
 - **Rec end**: what a new take does when you close it: Play, or go straight into overdub
 - **Dub mode**: Add (layers on top) or Replace (records over the old part)
 - **Metronome**: Click on/off, BPM (40-240), Time (2/4, 3/4, 4/4, 5/4, 6/8, 7/8) and Count-in. With the click on, the first loop starts on a bar line and is a whole number of bars. Once there is a loop the click follows it (the BPM shown is the loop's tempo); clear all to set a new tempo. With **Count-in** (on by default) the first take starts after one bar of click: press A, count along, play on the next beat 1. A again during the count-in cancels it. The click is not recorded.
@@ -65,7 +66,7 @@ Display colour, latency, MIDI CC map, projects (name, load, save as, new) and en
 
 ## Engine notes
 
-- The looper runs in the C audio thread. The USB input is read by its own C thread (ALSA, `plughw:CARD=<id>`). The USB device and the Brick have separate clocks: the input is resampled continuously (PI control on the ring fill, up to +-12000 ppm), so no frames are ever skipped. log.txt shows the drift in ppm.
+- The looper runs in the C audio thread. The USB input is read by its own C thread (ALSA, `plughw:CARD=<id>,DEV=<n>`, n = the chosen USB input, in the device's own best format and rate; log.txt shows the mixer, what the card runs at and the input level). The USB device and the Brick have separate clocks: the input is resampled continuously (PI control on the ring fill, up to +-12000 ppm), so no frames are ever skipped. log.txt shows the drift in ppm.
 - Built-in mic: the writer thread closes the speaker and reads `hw:0,0`; the mic's clock drives the engine until the take is done.
 - MIDI: only CCs are used (FX). Notes are ignored.
 - Rebuild the library with `native/build.sh` (zig).
