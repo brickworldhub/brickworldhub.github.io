@@ -132,7 +132,16 @@ typedef struct {
     volatile float cap_raw_pk;
     void *ph, *ch;
     char play_devs[256], cap_devs[512], play_dev[96], cap_dev[96], err[160], cap_err[160];
-    short cbuf[MAXBLOCK * 8];
+    /* input switch: fade the input out, then the capture thread swaps to cap_pending; it fades back in */
+    char cap_pending[512];
+    volatile int sw_req, cap_switch;
+    /* capture format and rate asked for (the device's own best ones), active and pending (applied at the swap) */
+    int cap_fmt_want, cap_rate_want, pend_fmt, pend_rate, cap_fmt;
+    double rs_pos; float rs_prev[2]; int rs_have;              /* linear rate conversion cap_rate -> sr */
+    float lvl_pk[2]; volatile long lvl_nz;                     /* per-channel peak + non-zero samples, for log.txt */
+    float in_g;
+    int in_hold;
+    unsigned char cbuf[MAXBLOCK * 16];
 } Eng;
 
 static float clampf(float v, float lo, float hi) { return v < lo ? lo : v > hi ? hi : v; }
@@ -671,7 +680,8 @@ API Eng *eng_create(int sr, int block) {
     g->p[P_HICUT] = 8000; g->p[P_LOCUT] = 80; g->p[P_MODRATE] = 0.5f; g->p[P_TRAILS] = 1;
     g->p[P_INGAIN] = 1; g->p[P_OUTGAIN] = 1; g->p[P_DLY_TYPE] = DLY_DIGITAL; g->p[P_DRV_LEVEL] = 1;
     g->dcur = -1; g->on_s = 1; g->in_s = 1; g->out_s = 1; g->dry_s = 1; g->wet_s = 0.6f; g->rdry_s = 1;
-    g->ratio = 1.0; g->priming = 1; g->target = 512;
+    g->ratio = 1.0; g->priming = 1; g->target = 512; g->in_g = 0;
+    g->cap_fmt_want = g->pend_fmt = 2; g->cap_rate_want = g->pend_rate = sr;
     g->lp.fc = g->hp.fc = -1;
     pthread_mutex_init(&g->lock, NULL);
     return g;
@@ -957,36 +967,78 @@ static int c_open(Eng *g) {
     strncpy(list, g->cap_devs, sizeof(list) - 1); list[sizeof(list) - 1] = 0;
     char *save = NULL;
     for (char *dev = strtok_r(list, "\n", &save); dev; dev = strtok_r(NULL, "\n", &save)) {
-        for (int chn = 2; chn >= 1; chn--) {
-            void *pcm = NULL;
-            int err = A.open(&pcm, dev, 1, 0);                         /* capture, blocking */
-            if (err < 0) { snprintf(g->cap_err, sizeof(g->cap_err), "%s: %s", dev, A.strerror(err)); break; }
-            err = A.setp(pcm, 2, 3, (unsigned)chn, (unsigned)g->sr, 1, 6000);   /* S16_LE, interleaved, 6 ms */
-            if (err < 0) {
-                snprintf(g->cap_err, sizeof(g->cap_err), "%s %dch: %s", dev, chn, A.strerror(err));
-                A.close(pcm);
-                continue;
+        /* the device's own format and rate first, then S16_LE at that rate, then S16_LE at the app's rate */
+        int tries[3][2] = {{g->cap_fmt_want, g->cap_rate_want}, {2, g->cap_rate_want}, {2, g->sr}};
+        int opened = 0, gone = 0;
+        for (int t = 0; t < 3 && !opened && !gone; t++) {
+            if (t > 0 && tries[t][0] == tries[t - 1][0] && tries[t][1] == tries[t - 1][1]) continue;
+            if (t == 2 && tries[0][0] == 2 && tries[0][1] == g->sr) continue;
+            int fmt = tries[t][0], rate = tries[t][1];
+            for (int chn = 2; chn >= 1; chn--) {
+                void *pcm = NULL;
+                int err = A.open(&pcm, dev, 1, 0);                     /* capture, blocking */
+                if (err < 0) { snprintf(g->cap_err, sizeof(g->cap_err), "%s: %s", dev, A.strerror(err)); gone = 1; break; }
+                /* period ~6 ms at the device rate */
+                err = A.setp(pcm, fmt, 3, (unsigned)chn, (unsigned)rate, 1, 6000);
+                if (err < 0) {
+                    snprintf(g->cap_err, sizeof(g->cap_err), "%s fmt %d %dch %d Hz: %s", dev, fmt, chn, rate, A.strerror(err));
+                    A.close(pcm);
+                    continue;
+                }
+                unsigned long buf = 0, per = 0;
+                A.getp(pcm, &buf, &per);
+                if (per == 0 || per > MAXBLOCK / 2) per = 128;
+                g->ch = pcm; g->cap_period = (int)per; g->cap_channels = chn; g->cap_rate = rate; g->cap_buffer = (int)buf;
+                g->cap_fmt = fmt; g->rs_pos = 0; g->rs_have = 0;
+                opened = 1;
+                break;
             }
-            unsigned long buf = 0, per = 0;
-            A.getp(pcm, &buf, &per);
-            if (per == 0 || per > MAXBLOCK) per = 128;
-            g->ch = pcm; g->cap_period = (int)per; g->cap_channels = chn; g->cap_rate = g->sr; g->cap_buffer = (int)buf;
+        }
+        if (opened) {
             g->cap_opens++;
             strncpy(g->cap_dev, dev, sizeof(g->cap_dev) - 1);
             g->cap_err[0] = 0;
-            A.start(pcm);
+            A.start(g->ch);
             return 1;
         }
     }
     return 0;
 }
 
+/* raw sample i (interleaved index) of the read buffer -> float */
+static inline float cap_sample(const Eng *g, long i) {
+    const unsigned char *b = g->cbuf;
+    switch (g->cap_fmt) {
+    case 32: {                                                      /* S24_3LE */
+        const unsigned char *q = b + 3 * i;
+        int v = q[0] | (q[1] << 8) | (q[2] << 16);
+        if (v & 0x800000) v -= 0x1000000;
+        return (float)v / 8388608.0f;
+    }
+    case 6: {                                                       /* S24_LE (in 32 bits) */
+        int v; memcpy(&v, b + 4 * i, 4); v &= 0xFFFFFF;
+        if (v & 0x800000) v -= 0x1000000;
+        return (float)v / 8388608.0f;
+    }
+    case 10: { int v; memcpy(&v, b + 4 * i, 4); return (float)v / 2147483648.0f; }   /* S32_LE */
+    default: { short v; memcpy(&v, b + 2 * i, 2); return (float)v / 32768.0f; }      /* S16_LE */
+    }
+}
+
 static void *capturer(void *arg) {
     Eng *g = (Eng *)arg;
     g->rt_cap = set_rt(52);
-    float fbuf[MAXBLOCK * 2];
+    float fbuf[MAXBLOCK * 2], obuf[MAXBLOCK * 4];
     while (g->run) {
         if (g->cap_change) { c_close(g); g->cap_change = 0; }
+        if (g->cap_switch) {                                  /* the writer has faded the old input out */
+            pthread_mutex_lock(&g->lock);
+            memcpy(g->cap_devs, g->cap_pending, sizeof(g->cap_devs));
+            g->cap_fmt_want = g->pend_fmt; g->cap_rate_want = g->pend_rate;
+            g->cap_switch = 0;
+            pthread_mutex_unlock(&g->lock);
+            c_close(g);
+        }
         if (!g->cap_devs[0]) { usleep(100000); continue; }
         if (!g->ch) {
             if (!c_open(g)) { usleep(1000000); continue; }
@@ -1009,15 +1061,35 @@ static void *capturer(void *arg) {
         }
         g->cap_reads += 1;
         if (r == 0) continue;
-        float pk = 0;
+        float pk = 0, pl = g->lvl_pk[0], pr = g->lvl_pk[1];
+        long nz = 0;
         for (long i = 0; i < r; i++) {
-            if (chn == 2) { fbuf[2 * i] = g->cbuf[2 * i] / 32768.0f; fbuf[2 * i + 1] = g->cbuf[2 * i + 1] / 32768.0f; }
-            else { fbuf[2 * i] = fbuf[2 * i + 1] = g->cbuf[i] / 32768.0f; }
-            pk = fmaxf(pk, fmaxf(fabsf(fbuf[2 * i]), fabsf(fbuf[2 * i + 1])));
+            if (chn == 2) { fbuf[2 * i] = cap_sample(g, 2 * i); fbuf[2 * i + 1] = cap_sample(g, 2 * i + 1); }
+            else { fbuf[2 * i] = fbuf[2 * i + 1] = cap_sample(g, i); }
+            float a = fabsf(fbuf[2 * i]), b = fabsf(fbuf[2 * i + 1]);
+            pk = fmaxf(pk, fmaxf(a, b)); pl = fmaxf(pl, a); pr = fmaxf(pr, b);
+            nz += (a > 0) + (b > 0);
         }
+        g->lvl_pk[0] = pl; g->lvl_pk[1] = pr; g->lvl_nz += nz;
         g->cap_raw_pk = fmaxf(g->cap_raw_pk * 0.97f, pk);     /* raw USB level, before Input gain */
         g->cap_frames += (double)r;
-        ring_push(g, fbuf, (int)r);
+        if (g->cap_rate == g->sr) ring_push(g, fbuf, (int)r);
+        else {                                                /* device can't do the app's rate: linear conversion */
+            double step = (double)g->cap_rate / g->sr, pos = g->rs_pos;
+            int m = 0;
+            if (!g->rs_have) { g->rs_prev[0] = fbuf[0]; g->rs_prev[1] = fbuf[1]; g->rs_have = 1; }
+            /* sample k of this block is index k+1, index 0 = last sample of the previous block */
+            while (pos < (double)r && m < MAXBLOCK * 2) {
+                long i0 = (long)pos; float t = (float)(pos - i0);
+                float a0 = i0 == 0 ? g->rs_prev[0] : fbuf[2 * (i0 - 1)], b0 = i0 == 0 ? g->rs_prev[1] : fbuf[2 * (i0 - 1) + 1];
+                float a1 = fbuf[2 * i0], b1 = fbuf[2 * i0 + 1];
+                obuf[2 * m] = a0 + (a1 - a0) * t; obuf[2 * m + 1] = b0 + (b1 - b0) * t;
+                m++; pos += step;
+            }
+            g->rs_pos = pos - (double)r;
+            g->rs_prev[0] = fbuf[2 * (r - 1)]; g->rs_prev[1] = fbuf[2 * (r - 1) + 1];
+            if (m) ring_push(g, obuf, m);
+        }
     }
     c_close(g);
     return NULL;
@@ -1062,10 +1134,24 @@ static void *writer(void *arg) {
             p_close(g);
             pthread_mutex_lock(&g->lock); update_target(g); g->priming = 1; pthread_mutex_unlock(&g->lock);
         }
-        if (!g->ph && !p_open(g)) { usleep(500000); continue; }
+        if (!g->ph && !p_open(g)) {
+            if (g->sw_req) { g->sw_req = 0; g->cap_switch = 1; }   /* no output: nothing to fade */
+            usleep(500000); continue;
+        }
         double c0 = cpu_now();
         pthread_mutex_lock(&g->lock);
-        ring_pull(g, g->L, g->R, n);
+        int got = ring_pull(g, g->L, g->R, n);
+        /* Input fade (20 ms): in after every (re)start of the input, out before switching device.
+         * Applied before the FX, so delay and reverb tails ring on through a switch. */
+        if (!got) { g->in_g = 0; g->in_hold = (int)(0.015f * (float)g->sr); }   /* settle 15 ms, then fade in */
+        else if (g->in_hold > 0) { g->in_hold -= n; g->in_g = 0; }
+        float tg = (g->sw_req || g->in_hold > 0) ? 0.0f : 1.0f, st = 1.0f / (0.02f * (float)g->sr);
+        if (got || g->in_g != tg)
+            for (int i = 0; i < n; i++) {
+                g->in_g += clampf(tg - g->in_g, -st, st);
+                g->L[i] *= g->in_g; g->R[i] *= g->in_g;
+            }
+        if (g->sw_req && g->in_g <= 0.0f) { g->sw_req = 0; g->cap_switch = 1; }
         fx_block(g, g->L, g->R, n);
         g->blocks++;
         pthread_mutex_unlock(&g->lock);
@@ -1109,13 +1195,33 @@ API int eng_start(Eng *g, const char *play_devs, const char *cap_devs, int frame
     return 1;
 }
 API void eng_set_capture(Eng *g, const char *cap_devs) {
-    strncpy(g->cap_devs, cap_devs ? cap_devs : "", sizeof(g->cap_devs) - 1);
-    g->cap_devs[sizeof(g->cap_devs) - 1] = 0;
-    g->cap_change = 1;
+    pthread_mutex_lock(&g->lock);
+    memset(g->cap_pending, 0, sizeof(g->cap_pending));
+    strncpy(g->cap_pending, cap_devs ? cap_devs : "", sizeof(g->cap_pending) - 1);
+    if (g->run) g->sw_req = 1;                              /* writer fades out, then the capture thread swaps */
+    else {
+        memcpy(g->cap_devs, g->cap_pending, sizeof(g->cap_devs));
+        g->cap_fmt_want = g->pend_fmt; g->cap_rate_want = g->pend_rate;
+        g->cap_change = 1;
+    }
+    pthread_mutex_unlock(&g->lock);
+}
+/* Format (ALSA number: 2 S16_LE, 6 S24_LE, 10 S32_LE, 32 S24_3LE) and rate for the next eng_set_capture / start */
+API void eng_set_cap_format(Eng *g, int fmt, int rate) {
+    if (fmt != 2 && fmt != 6 && fmt != 10 && fmt != 32) fmt = 2;
+    if (rate < 8000 || rate > 192000) rate = g->sr;
+    g->pend_fmt = fmt; g->pend_rate = rate;
+    if (!g->run) { g->cap_fmt_want = fmt; g->cap_rate_want = rate; }
+}
+API int eng_cap_format(Eng *g) { return g->cap_open ? g->cap_fmt : 0; }
+/* per-channel peak and non-zero sample count since the last call (then reset) */
+API void eng_cap_level(Eng *g, float *o) {
+    o[0] = g->lvl_pk[0]; o[1] = g->lvl_pk[1]; o[2] = (float)g->lvl_nz;
+    g->lvl_pk[0] = g->lvl_pk[1] = 0; g->lvl_nz = 0;
 }
 API void eng_set_buffer(Eng *g, int frames) { g->want_frames = frames; }
 API const char *eng_device(Eng *g) { return g->play_dev; }
 API const char *eng_cap_device(Eng *g) { return g->cap_dev; }
 API const char *eng_error(Eng *g) { return g->err; }
 API const char *eng_cap_error(Eng *g) { return g->cap_err; }
-API int bfx_version(void) { return 6; }
+API int bfx_version(void) { return 8; }

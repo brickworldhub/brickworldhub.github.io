@@ -1,4 +1,4 @@
-# BrickFX 1.0.0
+# BrickFX 1.0.2
 
 A stereo multi-effect for the TrimUI Brick (KNULLI): five effects in a chain, **DRIVE > MOD > DELAY > REVERB > EQ**, one type at a time in each, like the Hologram Chroma Console. Same look and controls as BrickSampler, but a separate app.
 
@@ -10,7 +10,7 @@ USB audio device (synth, audio interface...) --USB--> Brick --headphone jack--> 
 
 All audio runs in C (`native/bfx.c`), in two real-time threads. Python never touches the sound, so drawing the screen can't cause a dropout.
 
-- **Capture thread** reads the USB card (`plughw:CARD=<id>,DEV=0`, 48 kHz, stereo; mono devices are doubled to both sides).
+- **Capture thread** reads the USB card (`plughw:CARD=<id>,DEV=<n>`, the input chosen on the I/O page, stereo; mono devices are doubled to both sides), in the device's own best format (S24_3LE > S32_LE > S24_LE > S16_LE, decoded in C; S16_LE if refused) and at a rate it supports (48 kHz, otherwise its first rate, converted to 48 kHz). Before opening, the card's mixer is checked once: capture switches that are off are switched on and capture levels at 0% go to 0 dB (on the Brick nothing else does it, and some line inputs then send only zeros). Changing input fades the input out and back in (20 ms), so there's no click, and delay and reverb tails carry on.
 - **Writer thread** plays on the Brick's own codec (`plughw:0,0`), 128-frame blocks.
 - **Drift resampler** between the two. The USB device and the Brick each have their own clock, and they are never exactly the same (typically 50-300 ppm apart). Without correction the buffer between them slowly empties or overflows, and you get a click every few minutes. BrickFX reads the input with a tiny fractional speed change (Hermite interpolation) steered by a PI controller that holds the buffer on target. Tested offline with ±300 ppm of drift and jittery USB packets: no dropouts in 2 minutes of simulated time, spurious tones below -100 dB.
 
@@ -38,7 +38,7 @@ Tap SELECT (keyboard O, or a short Tab) for a full-screen scope; tap again to go
 
 ## Pages
 
-- **I/O** – Source USB (the first USB audio device found: a synth, an audio interface...; left/right picks a specific one), channels, input gain, output level, trails, latency; live status: card, drift in ppm, latency, dropouts, CPU.
+- **I/O** – Source USB (the first USB audio device found: a synth, an audio interface...; left/right picks a specific one), USB input (for cards with more than one recording input, e.g. an adapter with a mic in and a line in: Input 1, Input 2...; fixed on Input 1 when there's only one), channels, input gain, output level, trails, latency; live status: card, drift in ppm, latency, dropouts, CPU.
 - **CHAIN** – the four sections at a glance (lit = on) and their types, plus the tempo.
 - **DRV / MOD / DLY / REV / EQ** – one page per section: a picture (drive curve, LFOs, echoes, reverb decay) and its settings.
 - **SET** – preset, MIDI clock follow, CC map, display colour, engine info.
@@ -90,9 +90,9 @@ On a Linux PC a built-in test phrase plays through the delay (no USB input neede
 
 ## Files
 
-- `settings.json` – input, output, display, CC map (app-wide)
+- `settings.json` – input (card, USB input, and the USB input of each card), output, display, CC map (app-wide)
 - `presets.json` – the eight presets
-- `log.txt` – what happened at the last start (`log_previous.txt` the one before)
+- `log.txt` – what happened at the last start (`log_previous.txt` the one before): the cards' inputs, the mixer, the opened format/rate and the input level after 2 s
 - `native/build.sh` – rebuilds the C engine with zig
 
 ## Licence
