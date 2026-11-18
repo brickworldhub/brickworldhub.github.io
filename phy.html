@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BrickPHY – a physical modelling synth on the TrimUI Brick (coming soon) | BrickWorld</title>
+<meta name="description" content="BrickPHY is a free physical modelling synth for the TrimUI Brick. Bow, blow or strike a string, a bar, a plate or a bell, and play it from a MIDI keyboard or the Brick's buttons. Coming soon.">
+<meta property="og:title" content="BrickPHY (coming soon)">
+<meta property="og:description" content="A physical modelling synth on the TrimUI Brick: bow it, blow it, strike it.">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://brickworldhub.com/phy.html">
+<meta property="og:url" content="https://brickworldhub.com/phy.html">
+<meta property="og:image" content="https://brickworldhub.com/brickphy.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#120800">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Doto:wght@800;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@type": "SoftwareApplication",
+ "name": "BrickPHY",
+ "description": "A physical modelling synth for the TrimUI Brick: bow, blow or strike a string, a bar, a plate or a bell. Played from a MIDI keyboard or the Brick's buttons. Coming soon.",
+ "applicationCategory": "MultimediaApplication",
+ "operatingSystem": "KNULLI (TrimUI Brick)",
+ "url": "https://brickworldhub.com/phy.html",
+ "image": "https://brickworldhub.com/brickphy.jpg",
+ "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+ "isAccessibleForFree": true,
+ "author": {"@type": "Person", "name": "Alessandro Pietrosanti"},
+ "isPartOf": {"@type": "WebSite", "name": "BrickWorld", "url": "https://brickworldhub.com/"}
+}
+</script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="index.html">BRICKWORLD</a>
+    <nav aria-label="Main">
+      <a href="sampler.html">BrickSampler</a>
+      <a href="looper.html">BrickLooper</a>
+      <a href="tape.html">BrickTape</a>
+      <a href="fx.html">BrickFX</a>
+      <a href="ambientfx.html">BrickAmbientFX</a>
+      <a href="companion.html">BrickCompanion</a>
+      <a href="phy.html" aria-current="page">BrickPHY</a>
+      <a href="index.html#about">About</a>
+    </nav>
+  </div>
+</header>
+<div class="subnav">
+  <div class="wrap">
+    <span class="name">BRICKPHY</span>
+    <nav aria-label="On this page">
+      <a href="#how">How it works</a>
+      <a href="#sounds">What it does</a>
+      <a href="#roadmap">Next</a>
+    </nav>
+  </div>
+</div>
+
+<main>
+  <section id="top" class="wrap hero">
+    <div class="hero-copy">
+      <p class="kicker">Physical modelling synth · TrimUI Brick · KNULLI · Coming soon</p>
+      <h1>Bow it.<br>Blow it.<br>Strike it.</h1>
+      <p style="max-width:34em">BrickPHY doesn't play samples. It makes the sound the way a real instrument does: something sets a body ringing. You choose how it is played, with a bow, with air or with a mallet, and what rings: a string, a bar, a plate, a bell.</p>
+      <p style="max-width:34em">I loved the physical modelling synths of the 90s, and now the Brick is strong enough to do it in your pocket. The sound engine is <a href="https://pichenettes.github.io/mutable-instruments-documentation/modules/elements/" rel="noopener" target="_blank">Elements</a> by Mutable Instruments, the open source code by Émilie Gillet.</p>
+      <p style="max-width:34em">I'm testing the first version on my Brick now. It's not ready to download yet: follow <a href="https://www.instagram.com/brickworld_hub/" rel="noopener" target="_blank">@brickworld_hub</a> on Instagram to know when it's out.</p>
+      <div class="ctas">
+        <span class="btn primary" aria-disabled="true">Coming soon</span>
+        <a class="btn" href="https://www.instagram.com/brickworld_hub/" rel="noopener" target="_blank">Follow on Instagram</a>
+      </div>
+      <p class="small">It will be free and open source (GPL-3.0), like the other apps.</p>
+    </div>
+    <div>
+      <img class="hero-img" src="brickphy.jpg" width="1000" height="1250" alt="TrimUI Brick running BrickPHY, with a bowed string and its wave drawn on the dot-matrix screen">
+    </div>
+  </section>
+
+  <section id="how" class="band alt">
+    <div class="wrap section">
+      <h2>HOW IT WORKS</h2>
+      <ol class="steps">
+        <li><span class="dot">01</span><span>Choose <b>how it is played</b>: a bow, air (blow) or a mallet (strike). Or mix all three.</span></li>
+        <li><span class="dot">02</span><span>Choose <b>what rings</b>: the shape of the body, how bright it is, how long it rings, where you play it, and how much space around it.</span></li>
+        <li><span class="dot">03</span><span><b>Play</b> it from a MIDI keyboard, with velocity and pitch bend, or from the Brick's own buttons. Hear it on the Brick's jack or on a USB audio card.</span></li>
+      </ol>
+      <p class="note lcd">No samples, no loops: every note is played by the model, so it never sounds the same twice.</p>
+    </div>
+  </section>
+
+  <section id="sounds" class="band">
+    <div class="wrap section">
+      <h2>WHAT IT DOES</h2>
+      <div class="features">
+        <div class="feature"><h3>BOW, BLOW, STRIKE</h3><p>Three ways to play the sound, each with its own level and colour. A short strike, a slow swell or a long held note.</p></div>
+        <div class="feature"><h3>THE BODY</h3><p>From a string to a bar, a plate and a bell. Brightness, damping, the point where you play it, and a stereo space with reverb.</p></div>
+        <div class="feature"><h3>16 SOUNDS</h3><p>Eight to start with: cello, glass bell, wind pipe, pluck, kalimba, bowed metal, breath drone, marimba. Change them and they save by themselves.</p></div>
+        <div class="feature"><h3>WORKS WITHOUT MIDI</h3><p>Play eight scale notes on the D-pad and the A B X Y buttons. Hold makes the last note keep playing, good for bowed and blown sounds.</p></div>
+        <div class="feature"><h3>JACK OR USB OUT</h3><p>Out on the Brick's headphone jack, or on a USB audio card. You can switch while it plays.</p></div>
+        <div class="feature"><h3>SAME FAMILY</h3><p>Same dot-matrix screen, same buttons and the same kind of C audio engine as the other BrickWorld apps. With a live oscilloscope.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="roadmap" class="band alt">
+    <div class="wrap section">
+      <h2>NEXT UP</h2>
+      <ul class="list roadmap">
+        <li><span>One voice, bow / blow / strike, 16 sounds, play mode, MIDI in, jack or USB out</span><span class="tag">Testing</span></li>
+        <li><span>Breath control: blow into the Brick's mic to play it, the harder you blow the stronger the sound</span><span class="tag">Next</span></li>
+        <li><span>More instruments: brass, reed, flute, bowed string</span><span class="tag">Later</span></li>
+        <li><span>Up to 4 voices, mod wheel, aftertouch and breath controllers</span><span class="tag">Later</span></li>
+      </ul>
+    </div>
+  </section>
+  <section id="feedback" class="band">
+    <div class="wrap section">
+      <h2>HAVE AN IDEA?</h2>
+      <p style="max-width:40em">Got an idea for BrickPHY, or an instrument you would like it to play? Tell me.</p>
+      <div class="ctas">
+        <a class="btn primary" href="https://github.com/brickworldhub/brickworldhub.github.io/discussions/new?category=ideas" rel="noopener" target="_blank">Share an idea</a>
+      </div>
+      <p class="small">It goes to GitHub. No GitHub account? Email me at <a href="mailto:info@brickworldhub.com?subject=BrickPHY%20feedback">info@brickworldhub.com</a>.</p>
+    </div>
+  </section>
+
+  <section id="get-a-brick" class="band alt">
+    <div class="wrap section">
+      <div class="brick-box">
+        <img src="trimui-brick-colours.jpg" width="1200" height="900" alt="Four TrimUI Brick consoles in purple, white, red and black on a dark grey surface" loading="lazy">
+        <div class="brick-copy">
+          <h2>NO BRICK YET?</h2>
+          <p>BrickPHY will run on the TrimUI Brick, a small handheld console, with <a href="https://knulli.org/" rel="noopener" target="_blank">KNULLI</a> on its SD card. KNULLI is free: download it and follow the install guide at knulli.org. The app will be free: the Brick is the only thing you need to buy.</p>
+          <ul class="brick-specs">
+            <li>3.2" screen, 1024 × 768</li>
+            <li>USB-C for audio interfaces, USB synths and MIDI keyboards</li>
+            <li>Headphone jack out</li>
+            <li>3000 mAh battery, 159 g</li>
+            <li>White, black, red or purple</li>
+          </ul>
+          <div class="ctas">
+            <a class="btn primary" href="https://s.click.aliexpress.com/e/_c4ahArVf" rel="sponsored nofollow noopener" target="_blank">Buy on AliExpress</a>
+            <a class="btn" href="https://link.amazon/B07K0RcVx" rel="sponsored nofollow noopener" target="_blank">Buy on Amazon</a>
+          </div>
+          <p class="small">Check today's price on AliExpress or Amazon. These are affiliate links: if you buy through them, I get a small commission and you pay the same price. It helps me keep the apps free. As an Amazon Associate I earn from qualifying purchases.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer band">
+  <div class="wrap">
+    <a class="logo dot" href="index.html">BRICKWORLD</a>
+    <span>Made by Alessandro Pietrosanti · <a href="mailto:info@brickworldhub.com">info@brickworldhub.com</a> · <a href="https://www.instagram.com/brickworld_hub/" rel="me noopener" target="_blank">Instagram</a> · <a href="https://ko-fi.com/brickworld" rel="noopener" target="_blank">Support on Ko-fi</a></span>
+    <p class="legal">Free and open source under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" rel="noopener" target="_blank">GPL-3.0</a> licence. TrimUI and Brick are trademarks of their owners. BrickWorld is not affiliated with TrimUI. <a href="privacy.html">Privacy</a> · <a href="#" data-cookie-settings>Cookie settings</a></p>
+  </div>
+</footer>
+
+<script src="consent.js"></script>
+</body>
+</html>
