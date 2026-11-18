@@ -1,4 +1,4 @@
-# BrickTape 1.1.1
+# BrickTape 1.1.2
 
 A 4-track tape recorder for the TrimUI Brick (KNULLI), in the spirit of the 80s cassette 4-track recorders. Built on BrickLooper 1.4.0: same USB input (with clock drift correction), latency compensation, FX and display. Python, Pygame and NumPy, with the audio engine in C (`native/btdsp.c`).
 
@@ -56,6 +56,7 @@ Rebuild the library with `native/build.sh` (zig).
 
 ## Version history
 
+- **1.1.2** – USB inputs that recorded silence now work: the app switches on the card's capture switches and lifts capture volumes left at 0% (once per card, all written in log.txt), opens the device in its own best format (24-bit first) and at a rate it really supports (48 kHz, or its first rate, converted in the app). log.txt also lists each card's recording inputs at start and the level of each channel 2 s after opening. The USB input fades in over about 20 ms.
 - **1.1.1** – SET > USB input: for USB adapters with more than one recording input (for example mic in and line in), choose Input 1, 2... The choice is saved per card; if that input is gone next time, Input 1 is used (written in log.txt). The input changes with a short fade, no restart. log.txt shows the card, device, format, channels, rate, period and buffer that are open. The TAPE screen shows USB n IN m.
 - **1.1.0** – L1 / R1 change page on every page (also on TAPE). Rewind / fast forward move to L2 / R2: hold to wind (starts slow, speeds up), with the wind sound, and the tape stops where you let go.
 - **1.0.1** – no more "AUDIO ERROR" message for a few seconds at every start (the sound card opens in the background while the app starts; the message now only shows if a problem lasts).
