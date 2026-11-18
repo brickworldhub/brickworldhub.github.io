@@ -1,5 +1,8 @@
 # BrickSampler changes
 
+## 2.0.3 (2026-11-18)
+- Each USB device remembers its own USB INPUT: switch to another card and back, and it is on the input you chose before (e.g. line in on Input 2).
+
 ## 2.0.2 (2026-11-18)
 - USB inputs that gave silence now work: when a USB device is opened, any capture switch that is off is switched on, and a capture level left at 0 is set to 0 dB (unity). On the Brick nothing did this, so some adapters (e.g. a line in) only sent zeros. The device's mixer is written to log.txt.
 - Each USB input records in its own best format (24-bit when it has it), falling back to 16-bit.
