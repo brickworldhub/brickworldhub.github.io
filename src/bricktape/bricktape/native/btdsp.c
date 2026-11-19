@@ -6,6 +6,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <stdio.h>
 
 #if defined(_WIN32)
@@ -437,7 +438,7 @@ enum { TS_STOP, TS_PLAY, TS_FF, TS_REW };
 enum { TC_PLAY = 1, TC_STOP, TC_REC, TC_FF, TC_REW, TC_PAUSE, TC_LOCATE, TC_UNDO, TC_CLEAR };
 enum { TP_COMPI, TP_COMPE, TP_MON, TP_INGAIN, TP_OUTVOL, TP_MET, TP_BPM, TP_BEATS, TP_CLICK, TP_WIND,
        TP_ARM, TP_IN = TP_ARM + NTT, TP_VOL = TP_IN + NTT, TP_PAN = TP_VOL + NTT, TP_MUTE = TP_PAN + NTT,
-       TP_SCRUB = TP_MUTE + NTT, TP_COUNT };
+       TP_SCRUB = TP_MUTE + NTT, TP_MICMON, TP_COUNT };
 
 typedef struct {
     short *d, *u;                   /* the track (16-bit mono) and the copy of what the last take replaced */
@@ -487,9 +488,12 @@ typedef struct {
     volatile unsigned th_, tt_;
     volatile int tap_on;
     volatile int cap_period, cap_open, cap_mode;
-    /* built-in mic: the Brick can't play and record at once, so while a take records from it the
-     * speaker is closed and the mic's own clock drives the engine (time keeps running, in silence) */
-    volatile int mic_src, mic_want, mic_on, mic_direct;
+    /* built-in mic. The Brick's codec is full-duplex if the mic is opened BEFORE the output: then the mic
+     * stays open, its clock drives the engine and the output keeps playing (overdub while you listen).
+     * If that fails, the old way: while a take records from the mic the output is closed (duplex_fail). */
+    volatile int mic_src, mic_want, mic_on, mic_direct, duplex, duplex_fail, mic_ch, mic_period, mic_buffer;
+    volatile int fade_in;           /* output frames still to fade in after the output (re)opened */
+    float mon_s;                    /* input monitor gain as heard (smoothed: no clicks when it is switched) */
 #if !defined(_WIN32)
     pthread_t th;
     volatile int run, paused, closed, want_frames, opened_frames, buffer_frames, period_frames, rt, open_fails;
@@ -755,7 +759,11 @@ static void pull_input(Eng *g, int n) {
 /* =========================================================================================== tape */
 
 static long long tcomp_i(Eng *g) { return (long long)g->tp[TP_COMPI]; }
-static long long tcomp_e(Eng *g) { return g->mic_on ? (long long)g->tp[TP_COMPI] : (long long)g->tp[TP_COMPE]; }
+static long long tcomp_e(Eng *g) {
+    if (!g->mic_on) return (long long)g->tp[TP_COMPE];
+    /* mic: what it hears now reaches the engine one mic period (plus up to a block) later */
+    return (long long)g->tp[TP_COMPI] + (g->duplex ? g->mic_period + g->block : 0);
+}
 
 static void env_rebuild(Eng *g, TTrack *t, long long a, long long b) {
     if (a < 0) a = 0;
@@ -1018,19 +1026,27 @@ static int tape_process(Eng *g, int n) {
         g->wsp = 0;                 /* next wind starts slow again */
     }
     /* input monitor */
-    float pk2[2] = {0, 0}, mon = g->tp[TP_MON] > 0.5f ? gin : 0.0f;
+    /* built-in mic: its own switch (MONITOR MIC, default off: no feedback from the speaker) */
+    float mtgt = (g->mic_on ? g->tp[TP_MICMON] : g->tp[TP_MON]) > 0.5f ? gin : 0.0f;
+    float m0 = g->mon_s, m1 = mtgt > m0 ? fminf(mtgt, m0 + 0.13f) : fmaxf(mtgt, m0 - 0.13f);
+    g->mon_s = m1;
+    float pk2[2] = {0, 0};
     for (int k = 0; k < n; k++) {
         float a = g->inL[k] * gin, b = g->inR[k] * gin;
         if (fabsf(a) > pk2[0]) pk2[0] = fabsf(a);
         if (fabsf(b) > pk2[1]) pk2[1] = fabsf(b);
-        if (mon != 0.0f) { g->L[k] += g->inL[k] * mon; g->R[k] += g->inR[k] * mon; }
+        if (m0 != 0.0f || m1 != 0.0f) {
+            float mk = m0 + (m1 - m0) * (float)(k + 1) / (float)n;
+            g->L[k] += g->inL[k] * mk; g->R[k] += g->inR[k] * mk;
+        }
     }
     for (int c = 0; c < 2; c++) g->in_pk[c] = g->in_pk[c] * 0.85f > pk2[c] ? g->in_pk[c] * 0.85f : pk2[c];
     if (g->cap_open || g->in_started) active = 1;
     if (g->mic_src) {               /* the mic is open only while REC is engaged on an armed track */
         int arm = 0;
         for (int i = 0; i < NTT; i++) if (g->tp[TP_ARM + i] > 0.5f) arm = 1;
-        g->mic_want = (g->recm && arm) || any_window(g);
+        /* full-duplex: the mic stays open (no reopening, no gap at punch in). Old way: only while it records */
+        g->mic_want = !g->duplex_fail ? 1 : ((g->recm && arm) || any_window(g));
     }
     return active;
 }
@@ -1166,7 +1182,7 @@ API int eng_tape_status(Eng *g, double *o, int max) {
     o[0] = (double)g->P; o[1] = g->ts; o[2] = g->tpaused; o[3] = g->recm; o[4] = g->wts; o[5] = g->wpaused;
     o[6] = (double)g->maxt; o[7] = g->in_pk[0]; o[8] = g->in_pk[1]; o[9] = g->cap_open; o[10] = g->cap_period;
     o[11] = (double)(unsigned)(g->rh - g->rt_); o[12] = g->in_under; o[13] = g->in_drop; o[14] = g->ring_target;
-    o[15] = g->mic_on ? 1 : (g->mic_src ? 0.5 : 0);
+    o[15] = g->mic_on ? (g->duplex ? 2 : 1) : (g->mic_src ? (g->duplex_fail ? 0.25 : 0.5) : 0);
 #if !defined(_WIN32)
     o[16] = g->cap_reads; o[17] = g->cap_pk; o[18] = g->cap_ch;
 #else
@@ -1215,7 +1231,7 @@ API void eng_tape_load(Eng *g, int i, const short *d, long long n) {
 API void eng_in_push(Eng *g, const float *st, int n) { ring_push(g, st, n); }
 
 /* 1: the input is the built-in mic (see mic_src). */
-API void eng_mic(Eng *g, int on) { g->mic_src = on; if (!on) g->mic_want = 0; }
+API void eng_mic(Eng *g, int on) { g->mic_src = on; if (!on) g->mic_want = 0; else g->duplex_fail = 0; }
 
 /* Mono copy of the input for the sampler's REC page. */
 API void eng_tap(Eng *g, int on) {
@@ -1287,6 +1303,91 @@ static int a_open(Eng *g) {
     return 0;
 }
 
+/* Open a device, trying again for about 3 s while it is busy (another app or SDL may still hold it). */
+static int open_retry(void **p, const char *dev, int capture) {
+    int err = 0;
+    for (int i = 0; i < 30; i++) {
+        err = A.open(p, dev, capture, 0);
+        if (err != -EBUSY) break;
+        usleep(100000);
+    }
+    return err;
+}
+
+/* Built-in mic: hw:0,0 mono S16 48k at 20 ms (the codec refuses 10 ms), then plughw:0,0, 2 channels (left =
+ * MIC1), 40 and 80 ms. */
+static void *mic_open(Eng *g, char *used, size_t un) {
+    const char *devs[2] = {"hw:0,0", "plughw:0,0"};
+    const unsigned lat[3] = {20000, 40000, 80000};
+    for (int li = 0; li < 3; li++)
+        for (int c = 1; c <= 2; c++)
+            for (int i = 0; i < 2; i++) {
+                void *m = NULL;
+                int err = open_retry(&m, devs[i], 1);
+                if (err < 0) { snprintf(g->cap_err, sizeof(g->cap_err), "mic %s: %s", devs[i], A.strerror(err)); continue; }
+                err = A.setp(m, 2, 3, (unsigned)c, (unsigned)g->sr, 1, lat[li]);
+                if (err < 0) {
+                    snprintf(g->cap_err, sizeof(g->cap_err), "mic %s %dch %ums: %s", devs[i], c, lat[li] / 1000, A.strerror(err));
+                    A.close(m);
+                    continue;
+                }
+                unsigned long b = 0, pp = 0;
+                A.getp(m, &b, &pp);
+                g->mic_ch = c; g->mic_period = (int)pp; g->mic_buffer = (int)b;
+                snprintf(used, un, "%s, %d ch, %u ms", devs[i], c, lat[li] / 1000);
+                return m;
+            }
+    return NULL;
+}
+
+/* Fade the output out over 4 blocks, then close it (no click when the mic takes over the codec). */
+static void fade_close(Eng *g) {
+    if (!g->pcmh) return;
+    int n = g->block;
+    for (int b = 0; b < 4 && g->pcmh; b++) {
+        LOCK(g->lock);
+        int on = render(g);
+        UNLOCK(g->lock);
+        for (int i = 0; i < n; i++) {
+            float f = on ? 1.0f - (float)(b * n + i + 1) / (float)(4 * n) : 0.0f;
+            g->pcm[2 * i] = (short)(clampf(g->L[i], -1, 1) * 32767.0f * f);
+            g->pcm[2 * i + 1] = (short)(clampf(g->R[i], -1, 1) * 32767.0f * f);
+        }
+        long w = A.writei(g->pcmh, g->pcm, (unsigned long)n);
+        if (w < 0) A.recover(g->pcmh, (int)w, 1);
+    }
+    a_close(g);
+}
+
+/* One rendered block (g->L / g->R) to the output, with the fade-in after it opened. */
+static void out_block(Eng *g, int on) {
+    int n = g->block;
+    for (int i = 0; i < n; i++) {
+        if (on) {
+            float f = 1.0f;
+            if (g->fade_in > 0) { f = 1.0f - (float)g->fade_in / (float)(4 * n); g->fade_in--; }
+            float l = clampf(g->L[i], -1, 1) * f, r = clampf(g->R[i], -1, 1) * f;
+            g->pcm[2 * i] = (short)(l * 32767.0f); g->pcm[2 * i + 1] = (short)(r * 32767.0f);
+        } else {
+            short d = (i & 1) ? -1 : 1;
+            g->pcm[2 * i] = d; g->pcm[2 * i + 1] = d;
+        }
+    }
+    int done = 0;
+    while (done < n && g->pcmh) {
+        long w = A.writei(g->pcmh, g->pcm + done * 2, (unsigned long)(n - done));
+        if (w < 0) {
+            g->underruns++;
+            if (A.recover(g->pcmh, (int)w, 1) < 0) {
+                snprintf(g->err, sizeof(g->err), "write failed: %s", A.strerror((int)w));
+                a_close(g);
+            }
+            continue;
+        }
+        done += (int)w;
+    }
+}
+
 static double cpu_now(void) {
     struct timespec t;
     clock_gettime(CLOCK_THREAD_CPUTIME_ID, &t);
@@ -1301,7 +1402,7 @@ static void *writer(void *arg) {
     int n = g->block;
     double period = (double)n / g->sr;
     void *mic = NULL;
-    static short mbuf[4096];
+    static short mbuf[4096 * 2];
     while (g->run) {
         if (g->paused) {
             a_close(g);
@@ -1311,38 +1412,69 @@ static void *writer(void *arg) {
         }
         if (g->mic_want) {
             if (!mic) {
-                a_close(g);                                    /* the speaker must be closed for the mic */
-                const char *devs[2] = {"hw:0,0", "plughw:0,0"};
-                for (int i = 0; i < 2 && !mic; i++) {
-                    if (A.open(&mic, devs[i], 1, 0) < 0) { mic = NULL; continue; }
-                    int err = A.setp(mic, 2, 3, 1, (unsigned)g->sr, 1, 20000);
-                    if (err < 0) {
-                        snprintf(g->cap_err, sizeof(g->cap_err), "mic %s: %s", devs[i], A.strerror(err));
-                        A.close(mic); mic = NULL;
-                    }
+                /* the mic must be opened BEFORE the output: fade the output out and close it first */
+                fade_close(g);
+                char used[96] = "";
+                mic = mic_open(g, used, sizeof(used));
+                if (!mic) {
+                    fprintf(stderr, "mic: can't open (%s)\n", g->cap_err);
+                    g->mic_want = 0;
+                    if (!g->duplex_fail) { g->duplex_fail = 1; fprintf(stderr, "full-duplex: no (the mic won't open), the speaker goes quiet while it records\n"); }
+                    usleep(200000);
+                    continue;
                 }
-                if (!mic) { fprintf(stderr, "mic: can't open (%s)\n", g->cap_err); g->mic_want = 0; continue; }
                 A.start(mic);
-                fprintf(stderr, "mic: recording, speaker closed\n");
+                fprintf(stderr, "mic: opened %s, period %d, buffer %d\n", used, g->mic_period, g->mic_buffer);
+                g->duplex = 0;
+                if (!g->duplex_fail) {
+                    if (a_open(g)) {
+                        g->duplex = 1;
+                        g->fade_in = 4 * n;
+                        /* keep the output buffer as full as in normal play: same latency, no underrun */
+                        memset(g->pcm, 0, sizeof(short) * 2 * n);
+                        for (int f = 0; f + n <= g->buffer_frames - n; f += n) A.writei(g->pcmh, g->pcm, (unsigned long)n);
+                        fprintf(stderr, "full-duplex: yes, output %s period %d buffer %d, mic period %d buffer %d\n",
+                                g->dev, g->period_frames, g->buffer_frames, g->mic_period, g->mic_buffer);
+                    } else {
+                        fprintf(stderr, "full-duplex: no (output won't open with the mic: %s), the speaker goes quiet while it records\n", g->err);
+                        g->duplex_fail = 1;
+                        A.drop(mic); A.close(mic); mic = NULL;
+                        continue;                 /* the next loop opens the output again, the mic only for takes */
+                    }
+                } else fprintf(stderr, "mic: recording, speaker closed\n");
                 g->mic_on = 1; g->cap_err[0] = 0;
             }
             long r = A.readi(mic, mbuf, (unsigned long)n);
             if (r < 0) {
                 if (A.recover(mic, (int)r, 1) < 0) {
                     fprintf(stderr, "mic: read failed: %s\n", A.strerror((int)r));
-                    A.close(mic); mic = NULL; g->mic_on = 0; g->mic_want = 0;
+                    A.close(mic); mic = NULL; g->mic_on = 0; g->mic_want = 0; g->duplex = 0;
                 } else A.start(mic);
+                g->in_under++;
                 continue;
             }
+            double c0 = cpu_now();
             LOCK(g->lock);
-            for (int i = 0; i < n; i++) g->inL[i] = g->inR[i] = i < r ? mbuf[i] / 32768.0f : 0.0f;
+            for (int i = 0; i < n; i++) {
+                float x = i < r ? mbuf[g->mic_ch == 2 ? 2 * i : i] / 32768.0f : 0.0f;   /* 2 ch: left = MIC1 */
+                g->inL[i] = g->inR[i] = x;
+            }
             g->mic_direct = 1;
-            render(g);                                         /* recorded, not heard */
+            int on = render(g);
             UNLOCK(g->lock);
             g->blocks++;
+            if (g->duplex && g->pcmh) {
+                out_block(g, on);                       /* heard while it records */
+                g->load = g->load * 0.9f + 0.1f * (float)((cpu_now() - c0) / period);
+            }
             continue;
         }
-        if (mic) { A.drop(mic); A.close(mic); mic = NULL; g->mic_on = 0; fprintf(stderr, "mic: done, speaker back on\n"); }
+        if (mic) {
+            A.drop(mic); A.close(mic); mic = NULL; g->mic_on = 0;
+            fprintf(stderr, g->duplex ? "mic: closed (output stays on)\n" : "mic: done, speaker back on\n");
+            if (!g->duplex) g->fade_in = 4 * n;
+            g->duplex = 0;
+        }
         g->closed = 0;
         if (g->pcmh && g->want_frames != g->opened_frames) a_close(g);
         if (!g->pcmh && !a_open(g)) { g->open_fails++; usleep(500000); continue; }
@@ -1351,30 +1483,9 @@ static void *writer(void *arg) {
         LOCK(g->lock);
         int on = render(g);
         UNLOCK(g->lock);
-        for (int i = 0; i < n; i++) {
-            if (on) {
-                float l = clampf(g->L[i], -1, 1), r = clampf(g->R[i], -1, 1);
-                g->pcm[2 * i] = (short)(l * 32767.0f); g->pcm[2 * i + 1] = (short)(r * 32767.0f);
-            } else {
-                short d = (i & 1) ? -1 : 1;
-                g->pcm[2 * i] = d; g->pcm[2 * i + 1] = d;
-            }
-        }
         g->load = g->load * 0.9f + 0.1f * (float)((cpu_now() - c0) / period);
         g->blocks++;
-        int done = 0;
-        while (done < n && g->pcmh) {
-            long w = A.writei(g->pcmh, g->pcm + done * 2, (unsigned long)(n - done));
-            if (w < 0) {
-                g->underruns++;
-                if (A.recover(g->pcmh, (int)w, 1) < 0) {
-                    snprintf(g->err, sizeof(g->err), "write failed: %s", A.strerror((int)w));
-                    a_close(g);
-                }
-                continue;
-            }
-            done += (int)w;
-        }
+        out_block(g, on);
     }
     a_close(g);
     g->closed = 1;
