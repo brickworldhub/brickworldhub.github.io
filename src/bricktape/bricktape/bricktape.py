@@ -53,7 +53,7 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import pygame
 
 APP_NAME = "BRICKTAPE"
-VERSION = "1.1.2"
+VERSION = "1.1.3"
 # 48 kHz on the Brick: the system mixer and the codec run at 48k, and the speaker and mic share one
 # clock, so asking the mic for 44.1k while playback runs at 48k can stall the capture.
 SR = 48000 if os.path.isdir("/userdata/roms") else 44100
@@ -918,7 +918,7 @@ TAPE_MINUTES = 10           # per track (btdsp TAPE_MIN): the whole project is 1
 TAPE_WIND = 30              # rewind / fast forward speed (x play speed)
 TC_PLAY, TC_STOP, TC_REC, TC_FF, TC_REW, TC_PAUSE, TC_LOCATE, TC_UNDO, TC_CLEAR = range(1, 10)
 TS_STOP, TS_PLAY, TS_FF, TS_REW = range(4)
-TAPE_DEFAULTS = dict(mon=1, met=0, bpm=120, sig=2, click=70, scrub=1)
+TAPE_DEFAULTS = dict(mon=1, met=0, bpm=120, sig=2, click=70, scrub=1, micmon=0)
 TRACK_INPUTS = ["L", "R", "L+R"]
 TIME_SIGS = ["2/4", "3/4", "4/4", "5/4", "6/8", "7/8"]
 SIG_BEATS = [2, 3, 4, 5, 6, 7]
@@ -1243,7 +1243,8 @@ class NativeEngine:
         self.in_mute = False                # True for a moment while the input device changes (faded in C)
         self.tstat = np.zeros(24 + 8 * TAPE_TRACKS, np.float64)
         self.tape = dict(pos=0, state=0, paused=0, rec=0, wstate=0, wpaused=0, maxt=1, in_peak=[0.0, 0.0],
-                         cap_open=False, cap_period=0, ring_target=0, in_under=0, mic_on=False, cap_reads=0,
+                         cap_open=False, cap_period=0, ring_target=0, in_under=0, mic_on=False, duplex=False,
+                         duplex_fail=False, cap_reads=0,
                          cap_peak=0.0, cap_ch=0, drift=0.0, undo=0, engaged=0, gain=0.0,
                          tracks=[dict(end=0, rec=0, peak=0.0, ver=0, last=0, rin=0, rout=-1, take=-1)
                                  for _ in range(TAPE_TRACKS)])
@@ -1269,6 +1270,7 @@ class NativeEngine:
              float(tp["met"]), float(tp["bpm"]), float(SIG_BEATS[tp["sig"]]), tp["click"] / 100.0, float(TAPE_WIND)]
         t += [1.0 if a else 0.0 for a in tp["arm"]] + [float(v) for v in tp["inp"]] + [float(v) for v in tp["vols"]]
         t += [float(v) for v in tp["pans"]] + [1.0 if m else 0.0 for m in tp["mutes"]] + [float(tp["scrub"])]
+        t += [float(tp["micmon"])]
         t = tuple(t)
         if t != self.sent_tape and len(t) == len(self.tape_buf):
             self.tape_buf[:] = t
@@ -1328,7 +1330,8 @@ class NativeEngine:
         tp = self.tape
         tp.update(pos=int(o[0]), state=int(o[1]), paused=int(o[2]), rec=int(o[3]), wstate=int(o[4]), wpaused=int(o[5]),
                   maxt=int(o[6]), in_peak=[float(o[7]), float(o[8])], cap_open=bool(o[9]), cap_period=int(o[10]),
-                  in_under=int(o[12]), ring_target=int(o[14]), mic_on=o[15] >= 1, cap_reads=int(o[16]),
+                  in_under=int(o[12]), ring_target=int(o[14]), mic_on=o[15] >= 1, duplex=o[15] >= 2,
+                  duplex_fail=abs(o[15] - 0.25) < 0.01, cap_reads=int(o[16]),
                   cap_peak=float(o[17]), cap_ch=int(o[18]), drift=float(o[19]), undo=int(o[20]), engaged=int(o[21]),
                   gain=float(o[22]))
         for i, tr in enumerate(tp["tracks"]):
@@ -2548,6 +2551,7 @@ P_CLICKVOL = Param("click", "Click vol", "lin", 0, 100, 5, lambda v: f"{int(v)}%
 P_OFFSET = Param("loop_offset", "Offset", "lin", -100, 200, 1, f_ms, scope="ui")
 P_INGAIN = Param("gain", "Input gain", "lin", 0, 4, 0.05, f_gain, scope="rec")
 P_SCRUB = Param("scrub", "Wind sound", "enum", opts=OFFON, scope="tape")
+P_MICMON = Param("micmon", "Mic monitor", "enum", opts=OFFON, scope="tape")
 MIX_PARAMS = [[Param(f"tin{i}", "Input", "tin"), Param(f"tvol{i}", "Volume", "tvol"),
                Param(f"tpan{i}", "Pan", "tpan"), Param(f"tmute{i}", "Mute", "tmute")] for i in range(TAPE_TRACKS)]
 P_SOURCE = Param("rec_source", "Source", "source", scope="ui")
@@ -2887,6 +2891,10 @@ class App:
                 ctypes.windll.shcore.SetProcessDpiAwareness(1)
             except Exception:
                 pass
+        if use_alsa_tools():
+            # the app plays through its own ALSA thread: SDL must not open the sound card, or the built-in mic
+            # can't be opened before the output (that order is what makes the codec full-duplex)
+            os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
         pygame.display.init()
         pygame.font.init()
         pygame.joystick.init()
@@ -3952,6 +3960,8 @@ class App:
             elif p.key == "rec_dev":
                 self.switch_input()
                 self.save_settings()
+            elif p.key == "micmon" and self.state.tape["micmon"]:
+                self.show_toast("Use headphones: the speaker can feed back", 2.5)
             elif p.key in ("rec_source", "rec_channel") and not self.recorder.recording:
                 self.recorder.set_source(self.ui["rec_source"], self.ui["rec_channel"])
                 self.switch_input()
@@ -4069,7 +4079,14 @@ class App:
         """Say what will happen with the input this take records from."""
         if self.ui["rec_source"] == "internal":
             if ON_DEVICE:
-                self.show_toast("Mic: the sound stops while you record", 2.5)
+                tp = self.engine.tape
+                if tp.get("duplex_fail"):
+                    self.show_toast("Mic: the sound stops while you record", 2.5)
+                elif self.state.tape["micmon"]:
+                    self.show_toast("Mic monitor on: use headphones", 2.5)
+                elif not getattr(self, "_hp_tip", False):
+                    self._hp_tip = True
+                    self.show_toast("Tip: use headphones with the mic", 2.5)
         elif not self.engine.tape["cap_open"]:
             self.show_toast("USB input not connected: " + (self.engine.capture_error() or "see log.txt"), 3)
 
@@ -4114,7 +4131,8 @@ class App:
             e.set_mic(on)
             if on:
                 threading.Thread(target=Recorder.configure_builtin_mic, daemon=True).start()
-            print("tape: input built-in mic (the speaker goes quiet while it records)", flush=True)
+            print("tape: input built-in mic (full-duplex: the mic opens first, then the output, so you hear the tape"
+                  " while it records; if that fails the speaker goes quiet while it records)", flush=True)
 
     def usb_inputs(self):
         """([device numbers], index of the chosen one) for the USB card in Source."""
@@ -4473,7 +4491,8 @@ class App:
             pad = [P_PAD] if self.state.mode == "kit" else []
             return [[("RECORD", pad + REC_PARAMS)], []]
         return [[("DISPLAY", [P_DISPLAY]), ("AUDIO", [P_LATENCY, P_CLICKVOL, P_SCRUB]),
-                 ("INPUT", [P_SOURCE, P_USBIN, P_INGAIN, P_MONITOR, P_OFFSET])],
+                 ("INPUT", [P_SOURCE, P_USBIN, P_INGAIN,
+                            P_MICMON if self.ui["rec_source"] == "internal" else P_MONITOR, P_OFFSET])],
                 [("METRONOME", METRO_PARAMS), ("PROJECT", PROJECT_PARAMS), ("MIDI CC", [P_CCMAP, P_CCRESET])]]
 
     def draw_sections(self, y0, row_h=13, title_h=12, gap=3, offset=0):
