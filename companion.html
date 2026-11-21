@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BrickCompanion – a sound source for your analog synth, on the TrimUI Brick (coming soon) | BrickWorld</title>
-<meta name="description" content="BrickCompanion is a free app for the TrimUI Brick that works next to a mono analog synth: a sub oscillator into the external audio input, or an audio-rate modulator into the mod input. With or without MIDI. Coming soon.">
+<meta name="description" content="BrickCompanion is a free app for the TrimUI Brick that works next to a mono analog synth: a bank of three oscillators with an arpeggiator, sent with one cable into the synth's external audio input. With or without MIDI. Coming soon.">
 <meta property="og:title" content="BrickCompanion (coming soon)">
 <meta property="og:description" content="A sound source for your analog synth, on the TrimUI Brick.">
 <meta property="og:type" content="website">
@@ -25,7 +25,7 @@
  "@context": "https://schema.org",
  "@type": "SoftwareApplication",
  "name": "BrickCompanion",
- "description": "A companion app for mono analog synths on the TrimUI Brick: a sub oscillator or an audio-rate modulator, patched into the synth. Coming soon.",
+ "description": "A companion app for mono analog synths on the TrimUI Brick: a three-oscillator bank with an arpeggiator, patched into the synth's external audio input. Coming soon.",
  "applicationCategory": "MultimediaApplication",
  "operatingSystem": "KNULLI (TrimUI Brick)",
  "url": "https://brickworldhub.com/companion.html",
@@ -70,7 +70,7 @@
     <div class="hero-copy">
       <p class="kicker">For mono analog synths · TrimUI Brick · KNULLI · Coming soon</p>
       <h1>Patch it<br>into your<br>synth.</h1>
-      <p style="max-width:34em">BrickCompanion doesn't play on its own. It works next to your analog synth. The Brick makes one extra sound and you send it with a cable into the synth: into the external audio input as a sub oscillator, or into the mod input to make metallic, FM-like tones. Your synth's filter and envelopes do the rest.</p>
+      <p style="max-width:34em">BrickCompanion doesn't play on its own. It works next to your analog synth. The Brick becomes an extra bank of three oscillators, with its own arpeggiator, and you send it with one cable into the synth's external audio input. Your synth's filter and envelopes do the rest.</p>
       <p style="max-width:34em">I'm testing it now on my own synth. It's not ready to download yet: follow <a href="https://www.instagram.com/brickworld_hub/" rel="noopener" target="_blank">@brickworld_hub</a> on Instagram to know when it's out.</p>
       <div class="ctas">
         <span class="btn primary" aria-disabled="true">Coming soon</span>
@@ -87,9 +87,9 @@
     <div class="wrap section">
       <h2>HOW IT WORKS</h2>
       <ol class="steps">
-        <li><span class="dot">01</span><span>Run a <b>mono 3.5 mm cable</b> from the Brick's headphone jack to your synth's <b>external audio input</b> or <b>mod input</b>.</span></li>
-        <li><span class="dot">02</span><span>Pick what the Brick sends: a <b>sub oscillator</b> under your notes, or a <b>modulator</b> at audio rate.</span></li>
-        <li><span class="dot">03</span><span>Play. With MIDI it follows your keyboard. Without MIDI it plays a fixed note, a drone, or the notes you play on the Brick's buttons.</span></li>
+        <li><span class="dot">01</span><span>Run a <b>mono 3.5 mm cable</b> from the Brick's headphone jack to your synth's <b>external audio input</b>.</span></li>
+        <li><span class="dot">02</span><span>For MIDI, use your synth's <b>MIDI THRU</b>: keyboard into the synth, synth THRU into a USB MIDI interface on the Brick. Both play the same notes.</span></li>
+        <li><span class="dot">03</span><span>Set up the three oscillators, or turn on the arpeggiator, and play. No MIDI? It plays a fixed note, a drone, or the notes on the Brick's buttons.</span></li>
       </ol>
       <p class="note lcd">One voice, one signal, one cable. Mono only, on purpose: a mono cable uses just the left channel, so that's where the sound goes.</p>
     </div>
@@ -99,12 +99,12 @@
     <div class="wrap section">
       <h2>WHAT IT DOES</h2>
       <div class="features">
-        <div class="feature"><h3>SUB OSCILLATOR</h3><p>One or two octaves under your note, or the same octave and one up. Sine, triangle, saw, square or pulse with width. Into the external input it goes through your synth's own filter and VCA.</p></div>
-        <div class="feature"><h3>MODULATOR</h3><p>Into the mod input: a wave that follows your note at a ratio (1:4 up to 7:1), or a fixed frequency from 20 to 2000 Hz. Bells, metal, growls.</p></div>
+        <div class="feature"><h3>THREE OSCILLATORS</h3><p>Like the oscillator bank of a classic three-oscillator mono synth. Range Lo, 32', 16', 8', 4', 2', a mix level for each, and OSC 2 and 3 tuned up to 7 semitones up or down.</p></div>
+        <div class="feature"><h3>WAVES</h3><p>Triangle, shark, reverse saw, saw, square, wide and narrow pulse, sine. OSC 3 can follow the keyboard or stay on a fixed note, for drones and low hums.</p></div>
+        <div class="feature"><h3>ARPEGGIATOR</h3><p>The keys you hold, or a chord from one key (major, minor, 7ths, sus, power fifth, or your own). Up, down, random, as played, 1 to 4 octaves, gate, swing, latch. Internal tempo or MIDI clock.</p></div>
         <div class="feature"><h3>WORKS WITHOUT MIDI</h3><p>MIDI makes it follow your keyboard, but you don't need it. Fixed note for drones, or play eight scale notes on the Brick's buttons.</p></div>
         <div class="feature"><h3>OSCILLOSCOPE</h3><p>See the exact wave leaving the Brick, live, on the dot-matrix screen. It stands still on a held note.</p></div>
         <div class="feature"><h3>TUNING</h3><p>An A-440 reference tone, master tune, fine tune and glide, so it sits right with your synth.</p></div>
-        <div class="feature"><h3>SAME FAMILY</h3><p>Same screen, same buttons and same C audio engine as the other BrickWorld apps.</p></div>
       </div>
     </div>
   </section>
@@ -113,10 +113,10 @@
     <div class="wrap section">
       <h2>NEXT UP</h2>
       <ul class="list roadmap">
-        <li><span>Sub oscillator, modulator, play mode, oscilloscope, MIDI in</span><span class="tag">Testing</span></li>
+        <li><span>Three-oscillator bank, arpeggiator, play mode, oscilloscope, MIDI in</span><span class="tag">Testing</span></li>
+        <li><span>Modulator for the synth's mod input: bells, metal, growls</span><span class="tag">Testing</span></li>
+        <li><span>Noise in the oscillator mix, OSC 3 as a modulator, tap tempo</span><span class="tag">Later</span></li>
         <li><span>Noise and textures: white, pink, brown, tape hiss, crackle, your own WAVs</span><span class="tag">Later</span></li>
-        <li><span>Waves your synth doesn't have: wavetables, digital FM, vowels</span><span class="tag">Later</span></li>
-        <li><span>A simple 16-step pattern, with accent and slide</span><span class="tag">Idea</span></li>
       </ul>
     </div>
   </section>
